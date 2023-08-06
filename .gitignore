@@ -1,0 +1,4 @@
+*.so
+*egg-info
+bevnet/network/ops/build*
+*.pyc
