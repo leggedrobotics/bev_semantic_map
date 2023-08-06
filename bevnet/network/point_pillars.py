@@ -204,8 +204,8 @@ class PointPillars(GenericPointcloudBackbone):
     # TODO check lincense: https://github.com/zhulf0804/PointPillars/blob/main/model/pointpillars.py
     # mostly pasted at the moment
     def __init__(self, cfg):
-        """ Description
-        
+        """Description
+
         Args:
             cfg (PointPillarsParams): Configuration
         """

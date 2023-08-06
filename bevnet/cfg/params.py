@@ -12,7 +12,7 @@ class ModelParams:
         output_channels: int = 1
         multi_head: bool = True
         apply_sigmoid: List[bool] = field(default_factory=lambda: [True])
-    
+
     @dataclass
     class LiftSplatShootNetParams:
         @dataclass
@@ -21,7 +21,7 @@ class ModelParams:
             ybound: List[float] = field(default_factory=lambda: [-51.2, 51.2, 0.2])
             zbound: List[float] = field(default_factory=lambda: [-20.0, 20.0, 40.0])
             dbound: List[float] = field(default_factory=lambda: [4.0, 50.0, 0.2])
-        
+
         @dataclass
         class AugmentationParams:
             H: int = 396
@@ -34,7 +34,7 @@ class ModelParams:
             )  # percentage of scaled image to crop
             rot_lim: List[float] = field(default_factory=lambda: [-5.4, 5.4])
             rand_flip: bool = False
-            
+
         grid: GridParams = GridParams()
         augmentation: AugmentationParams = AugmentationParams()
         output_channels: int = 64
@@ -51,7 +51,8 @@ class ModelParams:
     fusion_net: FusionNetParams = FusionNetParams()
     lift_splat_shoot_net: LiftSplatShootNetParams = LiftSplatShootNetParams()
     point_pillars: PointPillarsParams = PointPillarsParams()
-    image_backbone: str = "lift_splat_shoot_net" 
+    image_backbone: str = "lift_splat_shoot_net"
     pointcloud_backbone: str = "point_pillars"
-    
+
+
 model: ModelParams = ModelParams()

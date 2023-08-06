@@ -5,7 +5,8 @@ import torch
 from dataclasses import asdict
 from bevnet.cfg import ModelParams
 
-from bevnet import network 
+from bevnet import network
+
 
 def get(name: str):
     for ele in dir(network):
@@ -14,6 +15,7 @@ def get(name: str):
             return getattr(network, ele)
 
     raise ValueError(f"Could not find {name} in {dir(network)}")
+
 
 class BevNet(nn.Module):
     def __init__(self, cfg_model: ModelParams):
@@ -42,9 +44,29 @@ class BevNet(nn.Module):
             )
         else:
             self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
-        
 
     def forward(self, imgs, rots, trans, intrins, post_rots, post_trans, target_shape, pcd_new):
+        """
+
+        Args:
+            imgs (torch.tensor shape=(BS, NR_CAMS, 3, H, W)): Camera Images
+            rots (torch.tensor shape=(BS, NR_CAMS, 3, 3)): extrinsic camera rotation
+            trans (torch.tensor shape=(BS, NR_CAMS, 3)): extrinsic camera translation
+            intrins (torch.tensor shape=(BS, NR_CAMS, 3, 3)): intrinsic
+            post_rots (torch.tensor shape=(BS, NR_CAMS, 3, 3)): transformations applied to pixel coordinates
+            post_trans (torch.tensor shape=(BS, NR_CAMS, 3)): transformations applied to pixel coordinates
+            target_shape (torch.tensor shape=4): indicates shape of output target (BS, OUT_DIMS, GRID_CELLS_X, GRID_CELLS_Y)
+            pcd_new (dict): "points": (N,3) float32 ; "scan": (NR_TOTAL_SCANS) torch.int64 indicates where a new scan begins;  "batch": (NR_TOTAL_BATCHES) torch.int64 indicates to wich batch poins belong;
+
+
+            --------------
+            pcd_new format explained:  "scan"=[500,302,400,501] ; "batch"=[802,901] indicates the first scan is from point 0-500 second scan 500-902 ...
+            same goes for the batches 0-802 is batch 0 therefore the first to scans belong to batch=0 and points 802-1703 to second batch.
+
+        Returns:
+            (torch.tensor shape=(BS, OUT_DIMS, GRID_CELLS_X, GRID_CELLS_Y)): shape of output target
+        """
+
         if self.cfg_model.dummy:
             return self.dummy(
                 voxelize_pcd_scans(
@@ -75,7 +97,7 @@ class BevNet(nn.Module):
                 "post_trans": post_trans,
             }
             all_data = {"camera_info": camera_info, "imgs": imgs, "pcd_new": pcd_new}
-            
+
             image_features = self.image_backbone(
                 imgs, rots, trans, intrins, post_rots, post_trans, pcd_new=pcd_new, camera_info=camera_info
             )
@@ -84,15 +106,15 @@ class BevNet(nn.Module):
         features = torch.cat(features, dim=1)
         return self.fusion_net(features).contiguous()
 
-if __name__ == '__main__':
-    
+
+if __name__ == "__main__":
+
     from bevnet.dataset import get_bev_dataloader
-    
+
     cfg = ModelParams()
     model = BevNet(cfg)
-    
+
     loader_train, loader_val, loader_test = get_bev_dataloader()
-    for j,batch in enumerate( loader_train):
+    for j, batch in enumerate(loader_train):
         imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
         pred = model(imgs, rots, trans, intrins, post_rots, post_trans, target.shape, pcd_new)
-        

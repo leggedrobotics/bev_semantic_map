@@ -12,6 +12,7 @@ from pytictac import Timer
 from .lss_tools import gen_dx_bx, cumsum_trick, QuickCumsum
 from perception_bev_learning.ops import bev_pool
 
+
 class Up(nn.Module):
     def __init__(self, in_channels, out_channels, scale_factor=2):
         super().__init__()

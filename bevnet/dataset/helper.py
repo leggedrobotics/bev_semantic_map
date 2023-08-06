@@ -39,6 +39,7 @@ def img_transform(img, post_rot, post_tran, resize, resize_dims, crop, flip, rot
 
     return img, post_rot, post_tran
 
+
 class NormalizeInverse(torchvision.transforms.Normalize):
     #  https://discuss.pytorch.org/t/simple-way-to-inverse-transform-normalization/4821/8
     def __init__(self, mean, std):
