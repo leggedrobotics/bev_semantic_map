@@ -10,7 +10,8 @@ from efficientnet_pytorch import EfficientNet
 from torchvision.models.resnet import resnet18
 from pytictac import Timer
 from .lss_tools import gen_dx_bx, cumsum_trick, QuickCumsum
-from perception_bev_learning.ops import bev_pool
+# from perception_bev_learning.ops import bev_pool
+from bevnet.ops import bev_pool
 
 
 class Up(nn.Module):
