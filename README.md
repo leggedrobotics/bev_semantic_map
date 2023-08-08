@@ -3,7 +3,7 @@
 # bevnet
 
 ```
-cd ~/git/bevnet/bevnet/model/ops
+cd ~/git/bevnet/
 python3 setup.py develop
 
 cd ~/git/bevnet
