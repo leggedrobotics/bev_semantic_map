@@ -189,6 +189,7 @@ class LiftSplatShootNet(nn.Module):
 
         # D x H x W x 3
         frustum = torch.stack((xs, ys, ds), -1)
+
         return nn.Parameter(frustum, requires_grad=False)
 
     def get_geometry(self, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
@@ -201,7 +202,12 @@ class LiftSplatShootNet(nn.Module):
         # undo post-transformation
         # B x N x D x H x W x 3
         points = self.frustum - post_trans.view(B, N, 1, 1, 1, 3)
+
+        # print(points.shape)
+
         points = torch.inverse(post_rots).view(B, N, 1, 1, 1, 3, 3).matmul(points.unsqueeze(-1))
+
+        # print(points.shape)
 
         # cam_to_ego
         points = torch.cat((points[:, :, :, :, :, :2] * points[:, :, :, :, :, 2:3], points[:, :, :, :, :, 2:3]), 5)
@@ -215,7 +221,7 @@ class LiftSplatShootNet(nn.Module):
         """Return B x N x D x H/downsample x W/downsample x C"""
         B, N, C, imH, imW = x.shape
 
-        x = x.view(B * N, C, imH, imW)
+        x = x.view(B * N, C, imH, imW)  # BN x C x H x W, bring in right shape for efficientnet
         x = self.camencode(x)
         x = x.view(B, N, self.camC, self.D, imH // self.downsample, imW // self.downsample)
         x = x.permute(0, 1, 3, 4, 5, 2)
@@ -224,10 +230,15 @@ class LiftSplatShootNet(nn.Module):
 
     def voxel_pooling(self, geom_feats, x, *args, **kwargs):
         B, N, D, H, W, C = x.shape
+
+        # print(x.shape)
+
         Nprime = B * N * D * H * W
 
         # flatten x
         x = x.reshape(Nprime, C)
+
+        # print(x.shape)
 
         # flatten indices
         geom_feats = ((geom_feats - (self.bx - self.dx / 2.0)) / self.dx).long()
@@ -280,6 +291,8 @@ class LiftSplatShootNet(nn.Module):
 
     def get_voxels(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
+        # print("geom", geom.shape)
+        # print("img", x.shape)
         x = self.get_cam_feats(x, *args, **kwargs)
         x = self.voxel_pooling(geom, x, *args, **kwargs)
         return x

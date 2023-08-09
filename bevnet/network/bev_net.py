@@ -85,10 +85,10 @@ class BevNet(nn.Module):
                 pcd_features = self.pointcloud_backbone(
                     x=pcd_new["points"], batch=pcd_new["batch"], scan=pcd_new["scan"]
                 )
-                print("pcd feat:", pcd_features.shape)
+                # print("pcd feat:", pcd_features.shape)
                 # print("target shape:", target_shape)
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
-                print("pcd feat:", pcd_features.shape)
+                # print("pcd feat:", pcd_features.shape)
                 features.append(pcd_features)
             except Exception as e:
                 raise ValueError("Pointcloud backbone failed")

@@ -10,6 +10,11 @@ cd ~/git/bevnet
 pip3 install -e ./
 
 ```
+## Additional installations
+```
+pip install pytictac
+pip install efficientnet-pytorch
+```
 
 run:
 ```
