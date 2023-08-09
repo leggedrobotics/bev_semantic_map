@@ -105,7 +105,7 @@ class MultiHeadBevEncode(nn.Module):
         for j in range(outC):
             heads.append(BevEncode(inC, 1))
 
-        self.heads = nn.ModuleList(heads)
+        self.heads = nn.ModuleList(heads)   # Puts modules in a list
 
     def forward(self, x):
         res = []
