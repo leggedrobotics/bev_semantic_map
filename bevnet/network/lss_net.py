@@ -10,7 +10,6 @@ from efficientnet_pytorch import EfficientNet
 from torchvision.models.resnet import resnet18
 from pytictac import Timer
 from .lss_tools import gen_dx_bx, cumsum_trick, QuickCumsum
-# from perception_bev_learning.ops import bev_pool
 from bevnet.ops import bev_pool
 
 
@@ -175,8 +174,9 @@ class LiftSplatShootNet(nn.Module):
             self.bevencode = BevEncode(inC=self.camC, outC=cfg.output_channels)
 
         # toggle using QuickCumsum vs. autograd
-        self.use_quickcumsum = True
+        self.use_quickcumsum = False
         self.use_quickcumsum_cuda = True
+        # self.use_quickcumsum_cuda = False   # TODO: fix this, cuda does not work
 
     def create_frustum(self):
         # make grid in image plane
@@ -203,11 +203,7 @@ class LiftSplatShootNet(nn.Module):
         # B x N x D x H x W x 3
         points = self.frustum - post_trans.view(B, N, 1, 1, 1, 3)
 
-        # print(points.shape)
-
         points = torch.inverse(post_rots).view(B, N, 1, 1, 1, 3, 3).matmul(points.unsqueeze(-1))
-
-        # print(points.shape)
 
         # cam_to_ego
         points = torch.cat((points[:, :, :, :, :, :2] * points[:, :, :, :, :, 2:3], points[:, :, :, :, :, 2:3]), 5)
@@ -231,14 +227,10 @@ class LiftSplatShootNet(nn.Module):
     def voxel_pooling(self, geom_feats, x, *args, **kwargs):
         B, N, D, H, W, C = x.shape
 
-        # print(x.shape)
-
         Nprime = B * N * D * H * W
 
         # flatten x
         x = x.reshape(Nprime, C)
-
-        # print(x.shape)
 
         # flatten indices
         geom_feats = ((geom_feats - (self.bx - self.dx / 2.0)) / self.dx).long()
@@ -291,14 +283,12 @@ class LiftSplatShootNet(nn.Module):
 
     def get_voxels(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
-        # print("geom", geom.shape)
-        # print("img", x.shape)
-        x = self.get_cam_feats(x, *args, **kwargs)
-        x = self.voxel_pooling(geom, x, *args, **kwargs)
+        x = self.get_cam_feats(x, *args, **kwargs)  # Splatting features
+        x = self.voxel_pooling(geom, x, *args, **kwargs)    # Projecting on 2d BEV grid
         return x
 
     def forward(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         x = self.get_voxels(x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
-        if hasattr(self, "bevencode"):
+        if hasattr(self, "bevencode"):  # Set to false atm
             x = self.bevencode(x)
         return x

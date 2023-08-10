@@ -7,7 +7,7 @@ from bevnet.dataset import normalize_img
 
 class DemoDataset(torch.utils.data.Dataset):
     def __init__(self):
-        self.nr_cameras = 4
+        self.nr_cameras = 5
         self.nr_lidar_points_time = 1
 
     def __len__(self):
@@ -67,7 +67,8 @@ class DemoDataset(torch.utils.data.Dataset):
         H_base__map = torch.eye(4)  # 2d tf matrix from base to map frame
         grid_map_resolution = torch.tensor([0.2])
 
-        target, aux = torch.zeros((1, 512, 512)), torch.zeros((1, 512, 512))    # Labels and aux labels in BEV space
+        # target, aux = torch.zeros((1, 512, 512)), torch.zeros((1, 512, 512))    # Labels and aux labels in BEV space
+        target, aux = torch.zeros((1, 128, 128)), torch.zeros((1, 128, 128))    # Labels and aux labels in BEV space
         imgs, rots, trans, intrins, post_rots, post_trans, img_plots = self.get_image_data()
         pcd_new = self.get_raw_pcd_data()
 
@@ -115,13 +116,13 @@ def get_bev_dataloader(return_test_dataloader=True):
     dataset_train = DemoDataset()
     dataset_val = DemoDataset()
 
-    loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=4, collate_fn=collate_fn)
+    loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=1, collate_fn=collate_fn)
     # print("len(loader_train):", len(loader_train))
-    loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=4, collate_fn=collate_fn)
+    loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=1, collate_fn=collate_fn)
 
     if return_test_dataloader:
         dataset_test = DemoDataset()    # Create a new test dataset with random values
-        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=4, collate_fn=collate_fn)
+        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=1, collate_fn=collate_fn)
         return loader_train, loader_val, loader_test
 
     return loader_train, loader_val
