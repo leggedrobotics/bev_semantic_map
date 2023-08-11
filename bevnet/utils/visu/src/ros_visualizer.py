@@ -77,13 +77,13 @@ if __name__ == "__main__":
     shape = (1, 128, 128)
     arr = np.random.rand(*shape)
 
-    # Threshold arr if bigger than 1
+    # Threshold arr if bigger than 0.5
     arr[arr > 0.5] = 1
     arr[arr <= 0.5] = 0
 
     res = 0.1
     layers = ["l1"]
-    #
+    
     # while not rospy.is_shutdown():
     #     vis.gridmap_arr(arr, res, layers, x=0, y=0)
     #     rospy.sleep(1)
