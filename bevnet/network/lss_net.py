@@ -10,7 +10,7 @@ from efficientnet_pytorch import EfficientNet
 from torchvision.models.resnet import resnet18
 from pytictac import Timer
 from .lss_tools import gen_dx_bx, cumsum_trick, QuickCumsum
-from perception_bev_learning.ops import bev_pool
+from bevnet.ops import bev_pool
 
 
 class Up(nn.Module):
@@ -104,7 +104,7 @@ class MultiHeadBevEncode(nn.Module):
         for j in range(outC):
             heads.append(BevEncode(inC, 1))
 
-        self.heads = nn.ModuleList(heads)
+        self.heads = nn.ModuleList(heads)   # Puts modules in a list
 
     def forward(self, x):
         res = []
@@ -188,6 +188,7 @@ class LiftSplatShootNet(nn.Module):
 
         # D x H x W x 3
         frustum = torch.stack((xs, ys, ds), -1)
+
         return nn.Parameter(frustum, requires_grad=False)
 
     def get_geometry(self, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
@@ -200,6 +201,7 @@ class LiftSplatShootNet(nn.Module):
         # undo post-transformation
         # B x N x D x H x W x 3
         points = self.frustum - post_trans.view(B, N, 1, 1, 1, 3)
+
         points = torch.inverse(post_rots).view(B, N, 1, 1, 1, 3, 3).matmul(points.unsqueeze(-1))
 
         # cam_to_ego
@@ -214,7 +216,7 @@ class LiftSplatShootNet(nn.Module):
         """Return B x N x D x H/downsample x W/downsample x C"""
         B, N, C, imH, imW = x.shape
 
-        x = x.view(B * N, C, imH, imW)
+        x = x.view(B * N, C, imH, imW)  # BN x C x H x W, bring in right shape for efficientnet
         x = self.camencode(x)
         x = x.view(B, N, self.camC, self.D, imH // self.downsample, imW // self.downsample)
         x = x.permute(0, 1, 3, 4, 5, 2)
@@ -223,6 +225,7 @@ class LiftSplatShootNet(nn.Module):
 
     def voxel_pooling(self, geom_feats, x, *args, **kwargs):
         B, N, D, H, W, C = x.shape
+
         Nprime = B * N * D * H * W
 
         # flatten x
@@ -257,14 +260,17 @@ class LiftSplatShootNet(nn.Module):
         x, geom_feats, ranks = x[sorts], geom_feats[sorts], ranks[sorts]
 
         # cumsum trick
-        if self.use_quickcumsum_cuda:
+        if self.use_quickcumsum_cuda:   # Very fast
+            # print("Using QuickCumsum CUDA")
             # self.nv account for BEV gridmap size H x W x 1?
             x = bev_pool(x, geom_feats, B, self.nx[2], self.nx[0], self.nx[1])
             final = torch.cat(x.unbind(dim=2), 1)
             return final
-        elif not self.use_quickcumsum:
+        elif not self.use_quickcumsum:  # Slow
+            # print("Using QuickCumsum Python")
             x, geom_feats = cumsum_trick(x, geom_feats, ranks)
-        else:
+        else:                        # Fast
+            # print("Using QuickCumsum")
             x, geom_feats = QuickCumsum.apply(x, geom_feats, ranks)
 
         # griddify (B x C x Z x X x Y)
@@ -279,12 +285,12 @@ class LiftSplatShootNet(nn.Module):
 
     def get_voxels(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
-        x = self.get_cam_feats(x, *args, **kwargs)
-        x = self.voxel_pooling(geom, x, *args, **kwargs)
+        x = self.get_cam_feats(x, *args, **kwargs)  # Splatting features
+        x = self.voxel_pooling(geom, x, *args, **kwargs)    # Projecting on 2d BEV grid
         return x
 
     def forward(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         x = self.get_voxels(x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
-        if hasattr(self, "bevencode"):
+        if hasattr(self, "bevencode"):  # Set to false atm
             x = self.bevencode(x)
         return x

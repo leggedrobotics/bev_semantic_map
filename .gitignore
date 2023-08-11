@@ -2,3 +2,4 @@
 *egg-info
 bevnet/network/ops/build*
 *.pyc
+*build
