@@ -3,8 +3,15 @@
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/cfg/config.rviz" />
 
   <node pkg="bevnet_visualizer"
-        name="visualizer"
+        name="pc_visualizer"
         type="pc_visualizer.py"
         output="screen">
-    </node>
+  </node>
+
+ <node pkg="bevnet_visualizer"
+      name="map_visualizer"
+      type="map_visualizer.py"
+      output="screen">
+  </node>
+
 </launch>

@@ -1,8 +1,11 @@
+#!/usr/bin/env python
+
 import rospy
 from grid_map_msgs.msg import GridMap, GridMapInfo
 from nav_msgs.msg import OccupancyGrid, MapMetaData
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import numpy as np
+import cv2
 
 class NumpyToMapVisualizer:
     def __init__(self, init_node=True):
@@ -74,7 +77,7 @@ class NumpyToMapVisualizer:
 if __name__ == "__main__":
     vis = NumpyToMapVisualizer()
 
-    shape = (1, 128, 128)
+    shape = (1, 512, 512)
     arr = np.random.rand(*shape)
 
     # Threshold arr if bigger than 0.5
@@ -83,7 +86,13 @@ if __name__ == "__main__":
 
     res = 0.1
     layers = ["l1"]
-    
+
+    img = cv2.imread("/home/rschmid/img.jpg")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = img[np.newaxis, ...]
+
+    arr = img
+
     # while not rospy.is_shutdown():
     #     vis.gridmap_arr(arr, res, layers, x=0, y=0)
     #     rospy.sleep(1)
