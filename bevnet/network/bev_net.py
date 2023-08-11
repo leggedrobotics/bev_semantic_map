@@ -5,6 +5,8 @@ import torch
 from dataclasses import asdict
 from bevnet.cfg import ModelParams
 
+from bevnet.utils import SystemLevelTimer, SystemLevelContextTimer, accumulate_time, Timer
+
 from bevnet import network
 
 
@@ -88,7 +90,7 @@ class BevNet(nn.Module):
                 # print("pcd feat:", pcd_features.shape)
                 # print("target shape:", target_shape)
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
-                print("pcd feat:", pcd_features.shape)
+                # print("pcd feat:", pcd_features.shape)
                 features.append(pcd_features)
             except Exception as e:
                 raise ValueError("Pointcloud backbone failed")
@@ -116,16 +118,17 @@ if __name__ == "__main__":
 
     from bevnet.dataset import get_bev_dataloader
 
-    cfg = ModelParams()
-    model = BevNet(cfg)
+    model_cfg = ModelParams()
+    model = BevNet(model_cfg)
     model.cuda()
 
     loader_train, loader_val, loader_test = get_bev_dataloader()
     for j, batch in enumerate(loader_train):
-        print(j)
+        # print(j)
         imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
         pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = pcd_new["points"].cuda(), pcd_new["batch"].cuda(), pcd_new["scan"].cuda()
-        pred = model(imgs.cuda(), rots.cuda(), trans.cuda(), intrins.cuda(), post_rots.cuda(), post_trans.cuda(), target.cuda().shape, pcd_new)
+        with Timer(f"Inference {j}"):
+            pred = model(imgs.cuda(), rots.cuda(), trans.cuda(), intrins.cuda(), post_rots.cuda(), post_trans.cuda(), target.cuda().shape, pcd_new)
 
     print("pred:", pred.shape)
     print(pred)

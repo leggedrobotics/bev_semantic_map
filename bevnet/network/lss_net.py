@@ -174,9 +174,8 @@ class LiftSplatShootNet(nn.Module):
             self.bevencode = BevEncode(inC=self.camC, outC=cfg.output_channels)
 
         # toggle using QuickCumsum vs. autograd
-        self.use_quickcumsum = False
+        self.use_quickcumsum = True
         self.use_quickcumsum_cuda = True
-        # self.use_quickcumsum_cuda = False   # TODO: fix this, cuda does not work
 
     def create_frustum(self):
         # make grid in image plane
@@ -261,14 +260,17 @@ class LiftSplatShootNet(nn.Module):
         x, geom_feats, ranks = x[sorts], geom_feats[sorts], ranks[sorts]
 
         # cumsum trick
-        if self.use_quickcumsum_cuda:
+        if self.use_quickcumsum_cuda:   # Very fast
+            # print("Using QuickCumsum CUDA")
             # self.nv account for BEV gridmap size H x W x 1?
             x = bev_pool(x, geom_feats, B, self.nx[2], self.nx[0], self.nx[1])
             final = torch.cat(x.unbind(dim=2), 1)
             return final
-        elif not self.use_quickcumsum:
+        elif not self.use_quickcumsum:  # Slow
+            # print("Using QuickCumsum Python")
             x, geom_feats = cumsum_trick(x, geom_feats, ranks)
-        else:
+        else:                        # Fast
+            # print("Using QuickCumsum")
             x, geom_feats = QuickCumsum.apply(x, geom_feats, ranks)
 
         # griddify (B x C x Z x X x Y)
