@@ -4,7 +4,7 @@
 
   <node pkg="bevnet_visualizer"
         name="visualizer"
-        type="visualizer.py"
+        type="pc_visualizer.py"
         output="screen">
     </node>
 </launch>

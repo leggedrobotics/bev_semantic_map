@@ -13,9 +13,10 @@ def visualize_pointcloud():
 
     rate = rospy.Rate(10)  # Publish rate in Hz
 
+    points_in_base_frame = (torch.rand((5000, 3)) - 0.5) * 20
+
     while not rospy.is_shutdown():
         # Generate a random 3D point cloud (replace with your actual point cloud data)
-        points_in_base_frame = torch.rand((5000, 3))
 
         # Convert the Torch tensor to a numpy array
         points_np = points_in_base_frame.numpy().astype(np.float32)
