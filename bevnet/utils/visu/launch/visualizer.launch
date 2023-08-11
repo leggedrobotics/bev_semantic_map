@@ -1,0 +1,10 @@
+<launch>
+  <!-- Launch rviz with rqt perspective -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/cfg/config.rviz" />
+
+  <node pkg="bevnet_visualizer"
+        name="visualizer"
+        type="visualizer.py"
+        output="screen">
+    </node>
+</launch>
