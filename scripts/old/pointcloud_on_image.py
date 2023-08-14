@@ -51,11 +51,13 @@ class PointCloudProjector(object):
     def __init__(self):
         rospy.init_node("projector")
 
-        self.image_topic_cam3 = "/alphasense_driver_ros/cam3/debayered"
-        self.image_topic_cam4 = "/alphasense_driver_ros/cam4/debayered"
-        self.image_topic_cam5 = "/alphasense_driver_ros/cam5/debayered"
+        # self.image_topic_cam3 = "/alphasense_driver_ros/cam3/debayered"
+        # self.image_topic_cam4 = "/alphasense_driver_ros/cam4/debayered"
+        # self.image_topic_cam5 = "/alphasense_driver_ros/cam5/debayered"
 
-        self.image_topic_perugia = "/alphasense_driver_ros/cam4"
+        # self.image_topic_perugia = "/alphasense_driver_ros/cam4"
+
+        self.image_topic_hoengg = "/wide_angle_camera_front/img_out"
 
         self.point_cloud_topic_vel = "/lidar/point_cloud"
         # /pointcloud_transformer/output_pcl2, /point_cloud_filter/lidar/point_cloud_filtered, /depth_camera_rear/depth/color/points_filtered
@@ -68,75 +70,90 @@ class PointCloudProjector(object):
         self._cv_bridge = CvBridge()
 
         # Camera 3 (left)
-        self.camera_info_cam3 = CameraInfo()
-        self.camera_info_cam3.header.frame_id = "cam3_sensor_frame_helper"  # Important, use helper frame for projection
-        self.camera_info_cam3.height = 1080
-        self.camera_info_cam3.width = 1440
-        self.camera_info_cam3.distortion_model = "equidistant"
-        self.camera_info_cam3.D = [-0.0391589409, 0.0025508685, -0.0070315976, 0.0028446106]
-        self.camera_info_cam3.K = [699.6648558052, 0.0, 684.6546232939, 0.0, 698.9976002222, 518.1907596555, 0.0, 0.0, 1.0]
-        self.camera_info_cam3.P = [699.6648558052, 0.0, 684.6546232939, 0.0, 0.0, 698.9976002222, 518.1907596555, 0.0 ,0.0, 0.0, 1.0, 0.0]
-        self.camera_info_cam3.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        self.camera_model_cam3 = PinholeCameraModel()
-        self.camera_model_cam3.fromCameraInfo(self.camera_info_cam3)
+        # self.camera_info_cam3 = CameraInfo()
+        # self.camera_info_cam3.header.frame_id = "cam3_sensor_frame_helper"  # Important, use helper frame for projection
+        # self.camera_info_cam3.height = 1080
+        # self.camera_info_cam3.width = 1440
+        # self.camera_info_cam3.distortion_model = "equidistant"
+        # self.camera_info_cam3.D = [-0.0391589409, 0.0025508685, -0.0070315976, 0.0028446106]
+        # self.camera_info_cam3.K = [699.6648558052, 0.0, 684.6546232939, 0.0, 698.9976002222, 518.1907596555, 0.0, 0.0, 1.0]
+        # self.camera_info_cam3.P = [699.6648558052, 0.0, 684.6546232939, 0.0, 0.0, 698.9976002222, 518.1907596555, 0.0 ,0.0, 0.0, 1.0, 0.0]
+        # self.camera_info_cam3.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        # self.camera_model_cam3 = PinholeCameraModel()
+        # self.camera_model_cam3.fromCameraInfo(self.camera_info_cam3)
+        #
+        # # Camera 4 (front)
+        # self.camera_info_cam4 = CameraInfo()
+        # self.camera_info_cam4.header.frame_id = "cam4_sensor_frame_helper"  # Important, use helper frame for projection
+        # self.camera_info_cam4.height = 1080
+        # self.camera_info_cam4.width = 1440
+        # self.camera_info_cam4.distortion_model = "equidistant"
+        # self.camera_info_cam4.D = [-0.0480706813, 0.0129997684, -0.0112199955, 0.0026955514]
+        # self.camera_info_cam4.K = [699.2284099702, 0.0, 711.8009584441, 0.0, 698.546880367, 524.7993478318, 0.0, 0.0, 1.0]
+        # self.camera_info_cam4.P = [699.2284099702, 0.0, 711.8009584441, 0.0, 0.0, 698.546880367, 524.7993478318, 0.0 ,0.0, 0.0, 1.0, 0.0]
+        # self.camera_info_cam4.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        # self.camera_model_cam4 = PinholeCameraModel()
+        # self.camera_model_cam4.fromCameraInfo(self.camera_info_cam4)
+        #
+        # # Camera 5 (right)
+        # self.camera_info_cam5 = CameraInfo()
+        # self.camera_info_cam5.header.frame_id = "cam5_sensor_frame_helper"  # Important, use helper frame for projection
+        # self.camera_info_cam5.height = 1080
+        # self.camera_info_cam5.width = 1440
+        # self.camera_info_cam5.distortion_model = "equidistant"
+        # self.camera_info_cam5.D = [-0.0393569867, -0.0015711557, -0.0003396351, -0.0001519304]
+        # self.camera_info_cam5.K = [700.1349034076, 0.0, 761.3978917011, 0.0, 699.958743393, 552.7799875257, 0.0, 0.0, 1.0]
+        # self.camera_info_cam5.P = [700.1349034076, 0.0, 761.3978917011, 0.0, 0.0, 699.958743393, 552.7799875257, 0.0 ,0.0, 0.0, 1.0, 0.0]
+        # self.camera_info_cam5.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        # self.camera_model_cam5 = PinholeCameraModel()
+        # self.camera_model_cam5.fromCameraInfo(self.camera_info_cam5)
+        #
+        # # Camera 6 (back)
+        # self.camera_info_cam6 = CameraInfo()
+        # self.camera_info_cam6.header.frame_id = "cam6_sensor_frame_helper"  # Important, use helper frame for projection
+        # self.camera_info_cam6.height = 1080
+        # self.camera_info_cam6.width = 1440
+        # self.camera_info_cam6.distortion_model = "equidistant"
+        # self.camera_info_cam6.D = [-0.0461433203, 0.0125454629, -0.0102876501, 0.0022414551]
+        # self.camera_info_cam6.K = [695.0792829233, 0.0, 687.1167332592, 0.0, 694.3314443904, 522.4848030013, 0.0, 0.0, 1.0]
+        # self.camera_info_cam6.P = [695.0792829233, 0.0, 687.1167332592, 0.0, 0.0, 694.3314443904, 522.4848030013, 0.0, 0.0,
+        #                       0.0, 1.0, 0.0]
+        # self.camera_info_cam6.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        # self.camera_model_cam6 = PinholeCameraModel()
+        # self.camera_model_cam6.fromCameraInfo(self.camera_info_cam6)
+        #
+        # # Perugia
+        # self.camera_info_perugia = CameraInfo()
+        # self.camera_info_perugia.header.frame_id = "cam4_sensor_frame_helper"  # Important, use helper frame for projection
+        # self.camera_info_perugia.height = 540
+        # self.camera_info_perugia.width = 720
+        # self.camera_info_perugia.distortion_model = "plumb_bob"
+        # self.camera_info_perugia.K = [347.548139773951, 0.0, 342.454373227748, 0.0, 347.434712422309, 271.368057185649, 0.0,
+        #                       0.0, 1.0]
+        # self.camera_info_perugia.P = [347.548139773951, 0.0, 342.454373227748, 0.0, 0.0, 347.434712422309, 271.368057185649, 0.0, 0.0, 0.0, 1.0, 0.0]
+        # self.camera_info_perugia.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        # self.camera_model_perugia = PinholeCameraModel()
+        # self.camera_model_perugia.fromCameraInfo(self.camera_info_perugia)
 
-        # Camera 4 (front)
-        self.camera_info_cam4 = CameraInfo()
-        self.camera_info_cam4.header.frame_id = "cam4_sensor_frame_helper"  # Important, use helper frame for projection
-        self.camera_info_cam4.height = 1080
-        self.camera_info_cam4.width = 1440
-        self.camera_info_cam4.distortion_model = "equidistant"
-        self.camera_info_cam4.D = [-0.0480706813, 0.0129997684, -0.0112199955, 0.0026955514]
-        self.camera_info_cam4.K = [699.2284099702, 0.0, 711.8009584441, 0.0, 698.546880367, 524.7993478318, 0.0, 0.0, 1.0]
-        self.camera_info_cam4.P = [699.2284099702, 0.0, 711.8009584441, 0.0, 0.0, 698.546880367, 524.7993478318, 0.0 ,0.0, 0.0, 1.0, 0.0]
-        self.camera_info_cam4.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        self.camera_model_cam4 = PinholeCameraModel()
-        self.camera_model_cam4.fromCameraInfo(self.camera_info_cam4)
-
-        # Camera 5 (right)
-        self.camera_info_cam5 = CameraInfo()
-        self.camera_info_cam5.header.frame_id = "cam5_sensor_frame_helper"  # Important, use helper frame for projection
-        self.camera_info_cam5.height = 1080
-        self.camera_info_cam5.width = 1440
-        self.camera_info_cam5.distortion_model = "equidistant"
-        self.camera_info_cam5.D = [-0.0393569867, -0.0015711557, -0.0003396351, -0.0001519304]
-        self.camera_info_cam5.K = [700.1349034076, 0.0, 761.3978917011, 0.0, 699.958743393, 552.7799875257, 0.0, 0.0, 1.0]
-        self.camera_info_cam5.P = [700.1349034076, 0.0, 761.3978917011, 0.0, 0.0, 699.958743393, 552.7799875257, 0.0 ,0.0, 0.0, 1.0, 0.0]
-        self.camera_info_cam5.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        self.camera_model_cam5 = PinholeCameraModel()
-        self.camera_model_cam5.fromCameraInfo(self.camera_info_cam5)
-
-        # Camera 6 (back)
-        self.camera_info_cam6 = CameraInfo()
-        self.camera_info_cam6.header.frame_id = "cam6_sensor_frame_helper"  # Important, use helper frame for projection
-        self.camera_info_cam6.height = 1080
-        self.camera_info_cam6.width = 1440
-        self.camera_info_cam6.distortion_model = "equidistant"
-        self.camera_info_cam6.D = [-0.0461433203, 0.0125454629, -0.0102876501, 0.0022414551]
-        self.camera_info_cam6.K = [695.0792829233, 0.0, 687.1167332592, 0.0, 694.3314443904, 522.4848030013, 0.0, 0.0, 1.0]
-        self.camera_info_cam6.P = [695.0792829233, 0.0, 687.1167332592, 0.0, 0.0, 694.3314443904, 522.4848030013, 0.0, 0.0,
-                              0.0, 1.0, 0.0]
-        self.camera_info_cam6.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        self.camera_model_cam6 = PinholeCameraModel()
-        self.camera_model_cam6.fromCameraInfo(self.camera_info_cam6)
-
-        # Perugia
-        self.camera_info_perugia = CameraInfo()
-        self.camera_info_perugia.header.frame_id = "cam4_sensor_frame_helper"  # Important, use helper frame for projection
-        self.camera_info_perugia.height = 540
-        self.camera_info_perugia.width = 720
-        self.camera_info_perugia.distortion_model = "plumb_bob"
-        self.camera_info_perugia.K = [347.548139773951, 0.0, 342.454373227748, 0.0, 347.434712422309, 271.368057185649, 0.0,
-                              0.0, 1.0]
-        self.camera_info_perugia.P = [347.548139773951, 0.0, 342.454373227748, 0.0, 0.0, 347.434712422309, 271.368057185649, 0.0, 0.0, 0.0, 1.0, 0.0]
-        self.camera_info_perugia.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        self.camera_model_perugia = PinholeCameraModel()
-        self.camera_model_perugia.fromCameraInfo(self.camera_info_perugia)
+        # Hoengg new (2023, February)
+        self.camera_info_hoengg = CameraInfo()
+        self.camera_info_hoengg.header.frame_id = "wide_angle_camera_front_camera_parent"
+        self.camera_info_hoengg.height = 1080
+        self.camera_info_hoengg.width = 1440
+        self.camera_info_hoengg.distortion_model = "equidistant"
+        self.camera_info_hoengg.D = [0.4316922809468283, 0.09279900476637248, -0.4010909691803734, 0.4756163338479413]
+        self.camera_info_hoengg.K = [575.6050407221768, 0.0, 745.7312198525915, 0.0, 578.564849365178, 519.5207040671075, 0.0, 0.0,
+                      1.0]
+        self.camera_info_hoengg.P = [575.6050407221768, 0.0, 745.7312198525915, 0.0, 0.0, 578.564849365178, 519.5207040671075, 0.0,
+                      0.0, 0.0, 1.0, 0.0]
+        self.camera_info_hoengg.R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        self.camera_model_hoengg = PinholeCameraModel()
+        self.camera_model_hoengg.fromCameraInfo(self.camera_info_hoengg)
 
         self.image = None
-        self.image_topic = self.image_topic_cam4
-        self.camera_model = self.camera_model_perugia
-        self.camera_info = self.camera_info_perugia
+        self.image_topic = self.image_topic_hoengg
+        self.camera_model = self.camera_model_hoengg
+        self.camera_info = self.camera_info_hoengg
         self.point_cloud_vel = None
         self.point_cloud_real = None
 
@@ -149,9 +166,9 @@ class PointCloudProjector(object):
 
         self.count = 0
 
-        create_dir(f"../../../samples/points/cam3")
+        # create_dir(f"../../../samples/points/cam3")
         create_dir(f"../../../samples/points/cam4")
-        create_dir(f"../../../samples/points/cam5")
+        # create_dir(f"../../../samples/points/cam5")
 
         rospy.on_shutdown(self.shutdown)
 
@@ -301,7 +318,7 @@ class PointCloudProjector(object):
 
         res = cv2.addWeighted(input_image.copy(), 0.3, image_with_points, 0.7, 0.0)
 
-        cv2.imwrite(f"../../samples/points/cam4/{self.image.header.stamp}.png", res)
+        cv2.imwrite(f"../../../samples/points/cam4/{self.image.header.stamp}.png", res)
 
         self.count += 1
         print(self.count)
@@ -313,7 +330,7 @@ class PointCloudProjector(object):
         for _ in enumerate(range(NUM_IMAGES)):
 
             self.capture = True
-            while self.capture:
+            while self.capture and not rospy.is_shutdown():
                 pass
 
 

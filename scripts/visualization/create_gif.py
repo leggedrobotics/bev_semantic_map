@@ -10,12 +10,12 @@ Date: Oct 2022
 import glob
 from PIL import Image
 
-SCALE = 1  # Scale the images to reduce the file size of the gif. Between 0 and 1.
+SCALE = 0.5  # Scale the images to reduce the file size of the gif. Between 0 and 1.
 INPUT_FOLDER = "/home/rschmid/gif"
 OUTPUT_FILE_NAME = "/home/rschmid/gif"
 
 DURATION = 200  # Duration of each frame in the gif in ms
-NUM_FILES = None  # Number of files to use for the gif. None for all files.
+NUM_FILES = 100  # Number of files to use for the gif. None for all files.
 
 
 def make_gif(frame_folder, file_name, scale=None, num_files=NUM_FILES):
