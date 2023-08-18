@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     image_dir = "/home/rschmid/RosBags/output/6/supervision_mask"
 
-    image_files = [f for f in os.listdir(image_dir) if f.endswith('.pt')]
+    image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.pt')])
 
     while not rospy.is_shutdown():
         for image_file in image_files:
