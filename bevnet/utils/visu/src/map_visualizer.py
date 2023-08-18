@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
+import os
+import sys
 import rospy
 from grid_map_msgs.msg import GridMap, GridMapInfo
 from nav_msgs.msg import OccupancyGrid, MapMetaData
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import numpy as np
 import cv2
+import torch
+
+np.set_printoptions(threshold=sys.maxsize)
+
 
 class NumpyToMapVisualizer:
     def __init__(self, init_node=True):
@@ -77,26 +83,37 @@ class NumpyToMapVisualizer:
 if __name__ == "__main__":
     vis = NumpyToMapVisualizer()
 
-    shape = (1, 512, 512)
-    arr = np.random.rand(*shape)
-
-    # Threshold arr if bigger than 0.5
-    arr[arr > 0.5] = 1
-    arr[arr <= 0.5] = 0
+    # shape = (1, 128, 128)
+    # arr = np.random.rand(*shape)
+    #
+    # # Threshold arr if bigger than 0.5
+    # arr[arr > 0.5] = 1
+    # arr[arr <= 0.5] = 0
 
     res = 0.1
     layers = ["l1"]
 
-    img = cv2.imread("/home/rschmid/img.jpg")
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = img[np.newaxis, ...]
+    image_dir = "/home/rschmid/RosBags/output/6/supervision_mask"
 
-    arr = img
-
-    # while not rospy.is_shutdown():
-    #     vis.gridmap_arr(arr, res, layers, x=0, y=0)
-    #     rospy.sleep(1)
+    image_files = [f for f in os.listdir(image_dir) if f.endswith('.pt')]
 
     while not rospy.is_shutdown():
-        vis.occupancy_map_arr(arr, res, x=0, y=0)
-        rospy.sleep(1)
+        for image_file in image_files:
+
+            if rospy.is_shutdown():
+                break
+
+            img_path = os.path.join(image_dir, image_file)
+
+            img = torch.load(img_path, map_location=torch.device('cpu')).cpu().numpy()
+
+            if img is None:
+                continue
+
+            img = img[np.newaxis, ...]
+
+            # Convert bool image to uint8
+            img = img.astype(np.uint8)
+
+            vis.occupancy_map_arr(img, res, x=0, y=0)
+            rospy.sleep(1)

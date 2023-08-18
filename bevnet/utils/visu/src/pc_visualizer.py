@@ -11,7 +11,7 @@ def visualize_pointcloud():
     rospy.init_node('pointcloud_visualizer', anonymous=True)
     pub = rospy.Publisher('/pointcloud', PointCloud2, queue_size=1)
 
-    points_in_base_frame = (torch.rand((1000, 3)) - 0.5) * 51.2
+    points_in_base_frame = (torch.rand((1000, 3)) - 0.5) * 12.8
 
     # Generate a random 3D point cloud (replace with your actual point cloud data)
 
