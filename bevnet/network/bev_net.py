@@ -8,6 +8,7 @@ from bevnet.cfg import ModelParams
 from bevnet.utils import SystemLevelTimer, SystemLevelContextTimer, accumulate_time, Timer
 
 from bevnet import network
+import cv2
 
 
 def get(name: str):
@@ -122,6 +123,8 @@ if __name__ == "__main__":
     model = BevNet(model_cfg)
     model.cuda()
 
+    SAVE_PRED = True
+
     loader_train, loader_val, loader_test = get_bev_dataloader()
     for j, batch in enumerate(loader_train):
         # print(j)
@@ -130,5 +133,7 @@ if __name__ == "__main__":
         with Timer(f"Inference {j}"):
             pred = model(imgs.cuda(), rots.cuda(), trans.cuda(), intrins.cuda(), post_rots.cuda(), post_trans.cuda(), target.cuda().shape, pcd_new)
 
-    print("pred:", pred.shape)
-    print(pred)
+        if SAVE_PRED:
+            # Save predictions as grayscale images
+            pred = pred.cpu().detach().numpy()
+            cv2.imwrite(f"/home/rschmid/bev_out/pred_{j}.jpg", pred[0, 0] * 255)
