@@ -69,11 +69,11 @@ def accumulate_time(method):
 
         if method.__name__ in args[0].slt_time_summary:
             args[0].slt_time_summary[method.__name__] += st
-            args[0].slt_time_squared_summary[method.__name__] += st**2
+            args[0].slt_time_squared_summary[method.__name__] += st ** 2
             args[0].slt_n_summary[method.__name__] += 1
         else:
             args[0].slt_time_summary[method.__name__] = st
-            args[0].slt_time_squared_summary[method.__name__] = st**2
+            args[0].slt_time_squared_summary[method.__name__] = st ** 2
             args[0].slt_n_summary[method.__name__] = 1
             args[0].slt_n_level[method.__name__] = 0
 
@@ -118,11 +118,11 @@ class SystemLevelContextTimer:
 
         if self.name in self.parent.slt_time_summary:
             self.parent.slt_time_summary[self.name] += st
-            self.parent.slt_time_squared_summary[self.name] += st**2
+            self.parent.slt_time_squared_summary[self.name] += st ** 2
             self.parent.slt_n_summary[self.name] += 1
         else:
             self.parent.slt_time_summary[self.name] = st
-            self.parent.slt_time_squared_summary[self.name] = st**2
+            self.parent.slt_time_squared_summary[self.name] = st ** 2
             self.parent.slt_n_summary[self.name] = 1
             self.parent.slt_n_level[self.name] = 1
 
@@ -152,7 +152,7 @@ class SystemLevelTimer:
                     n = o.slt_n_summary[k]
                     spacing = int(o.slt_n_level[k] * 5)
                     mean = v / n
-                    std = round(((o.slt_time_squared_summary[k] / n) - (mean**2)) ** 0.5, 3)
+                    std = round(((o.slt_time_squared_summary[k] / n) - (mean ** 2)) ** 0.5, 3)
                     s += (
                         "\n  +"
                         + "-" * spacing

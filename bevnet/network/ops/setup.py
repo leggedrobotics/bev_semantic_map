@@ -14,12 +14,7 @@ setup(
             define_macros=[("WITH_CUDA", None)],
         ),
         CUDAExtension(
-            name="iou3d_op",
-            sources=[
-                "iou3d/iou3d.cpp",
-                "iou3d/iou3d_kernel.cu",
-            ],
-            define_macros=[("WITH_CUDA", None)],
+            name="iou3d_op", sources=["iou3d/iou3d.cpp", "iou3d/iou3d_kernel.cu"], define_macros=[("WITH_CUDA", None)]
         ),
     ],
     cmdclass={"build_ext": BuildExtension},

@@ -57,13 +57,8 @@ if __name__ == "__main__":
         license="TBD",
         ext_modules=[
             make_cuda_ext(
-                name="bev_pool_ext",
-                module="bevnet.ops.bev_pool",
-                sources=[
-                    "src/bev_pool.cpp",
-                    "src/bev_pool_cuda.cu",
-                ],
-            ),
+                name="bev_pool_ext", module="bevnet.ops.bev_pool", sources=["src/bev_pool.cpp", "src/bev_pool_cuda.cu"]
+            )
         ],
         cmdclass={"build_ext": BuildExtension},
         zip_safe=False,

@@ -104,7 +104,7 @@ class MultiHeadBevEncode(nn.Module):
         for j in range(outC):
             heads.append(BevEncode(inC, 1))
 
-        self.heads = nn.ModuleList(heads)   # Puts modules in a list
+        self.heads = nn.ModuleList(heads)  # Puts modules in a list
 
     def forward(self, x):
         res = []
@@ -260,7 +260,7 @@ class LiftSplatShootNet(nn.Module):
         x, geom_feats, ranks = x[sorts], geom_feats[sorts], ranks[sorts]
 
         # cumsum trick
-        if self.use_quickcumsum_cuda:   # Very fast
+        if self.use_quickcumsum_cuda:  # Very fast
             # print("Using QuickCumsum CUDA")
             # self.nv account for BEV gridmap size H x W x 1?
             x = bev_pool(x, geom_feats, B, self.nx[2], self.nx[0], self.nx[1])
@@ -269,7 +269,7 @@ class LiftSplatShootNet(nn.Module):
         elif not self.use_quickcumsum:  # Slow
             # print("Using QuickCumsum Python")
             x, geom_feats = cumsum_trick(x, geom_feats, ranks)
-        else:                        # Fast
+        else:  # Fast
             # print("Using QuickCumsum")
             x, geom_feats = QuickCumsum.apply(x, geom_feats, ranks)
 
@@ -286,7 +286,7 @@ class LiftSplatShootNet(nn.Module):
     def get_voxels(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
         x = self.get_cam_feats(x, *args, **kwargs)  # Splatting features
-        x = self.voxel_pooling(geom, x, *args, **kwargs)    # Projecting on 2d BEV grid
+        x = self.voxel_pooling(geom, x, *args, **kwargs)  # Projecting on 2d BEV grid
         return x
 
     def forward(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):

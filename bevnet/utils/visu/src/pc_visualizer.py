@@ -7,9 +7,10 @@ import sensor_msgs.point_cloud2 as pc2
 import numpy as np
 import torch
 
+
 def visualize_pointcloud():
-    rospy.init_node('pointcloud_visualizer', anonymous=True)
-    pub = rospy.Publisher('/pointcloud', PointCloud2, queue_size=1)
+    rospy.init_node("pointcloud_visualizer", anonymous=True)
+    pub = rospy.Publisher("/pointcloud", PointCloud2, queue_size=1)
 
     points_in_base_frame = (torch.rand((1000, 3)) - 0.5) * 12.8
 
@@ -32,9 +33,9 @@ def visualize_pointcloud():
 
         rospy.sleep(1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     try:
         visualize_pointcloud()
     except rospy.ROSInterruptException:
         pass
-

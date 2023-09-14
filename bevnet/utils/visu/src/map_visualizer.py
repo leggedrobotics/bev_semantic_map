@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     image_dir = "/home/rschmid/RosBags/output/6/supervision_mask"
 
-    image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.pt')])
+    image_files = sorted([f for f in os.listdir(image_dir) if f.endswith(".pt")])
 
     while not rospy.is_shutdown():
         for image_file in image_files:
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
             img_path = os.path.join(image_dir, image_file)
 
-            img = torch.load(img_path, map_location=torch.device('cpu')).cpu().numpy()
+            img = torch.load(img_path, map_location=torch.device("cpu")).cpu().numpy()
 
             if img is None:
                 continue

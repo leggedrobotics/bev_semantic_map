@@ -112,7 +112,7 @@ class BevNet(nn.Module):
             features.append(image_features)
 
         features = torch.cat(features, dim=1)
-        return self.fusion_net(features).contiguous()   # Store the tensor in a contiguous chunk of memory for efficiency
+        return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
 
 
 if __name__ == "__main__":
@@ -129,9 +129,22 @@ if __name__ == "__main__":
     for j, batch in enumerate(loader_train):
         # print(j)
         imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
-        pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = pcd_new["points"].cuda(), pcd_new["batch"].cuda(), pcd_new["scan"].cuda()
+        pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
+            pcd_new["points"].cuda(),
+            pcd_new["batch"].cuda(),
+            pcd_new["scan"].cuda(),
+        )
         with Timer(f"Inference {j}"):
-            pred = model(imgs.cuda(), rots.cuda(), trans.cuda(), intrins.cuda(), post_rots.cuda(), post_trans.cuda(), target.cuda().shape, pcd_new)
+            pred = model(
+                imgs.cuda(),
+                rots.cuda(),
+                trans.cuda(),
+                intrins.cuda(),
+                post_rots.cuda(),
+                post_trans.cuda(),
+                target.cuda().shape,
+                pcd_new,
+            )
 
         if SAVE_PRED:
             # Save predictions as grayscale images
