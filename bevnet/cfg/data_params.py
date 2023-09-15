@@ -14,6 +14,7 @@ class DataParams:
 
     img_path: str = "/home/rschmid/RosBags/bevnet/image"
     pcd_path: str = "/home/rschmid/RosBags/bevnet/pcd"
+    target_path: str = "/home/rschmid/RosBags/bevnet/target"
 
     trans_pc_cam = [0.025654243139211275, 0.0406744001863073, -0.004784660744370228]
     rot_pc_cam = [0.0010163463332151373, 0.1270025471498098, 0.9918701104718138, 0.007937506549489694]

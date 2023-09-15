@@ -12,6 +12,7 @@ class ModelParams:
         output_channels: int = 1
         multi_head: bool = True
         apply_sigmoid: List[bool] = field(default_factory=lambda: [True])
+        lr: float = 1e-3
 
     @dataclass
     class LiftSplatShootNetParams:

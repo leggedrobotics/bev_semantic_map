@@ -1,6 +1,5 @@
 import bevnet.network as network_simple
 from bevnet.network import voxelize_pcd_scans
-from torch import nn
 import torch
 from dataclasses import asdict
 from bevnet.cfg import ModelParams
@@ -8,7 +7,15 @@ from bevnet.cfg import ModelParams
 from bevnet.utils import SystemLevelTimer, SystemLevelContextTimer, accumulate_time, Timer
 
 from bevnet import network
+from bevnet.dataset import get_bev_dataloader
+
+import torch.nn.functional as F
+import tqdm
+
 import cv2
+
+# Global settings
+SAVE_PRED = True
 
 
 def get(name: str):
@@ -20,13 +27,14 @@ def get(name: str):
     raise ValueError(f"Could not find {name} in {dir(network)}")
 
 
-class BevNet(nn.Module):
+class BevNet(torch.nn.Module):
     def __init__(self, cfg_model: ModelParams):
         super(BevNet, self).__init__()
         self.cfg_model = cfg_model
 
+        # Setup model structure
         if cfg_model.dummy:
-            self.dummy = nn.Conv2d(1, 1, kernel_size=1, stride=1, padding=0)
+            self.dummy = torch.nn.Conv2d(1, 1, kernel_size=1, stride=1, padding=0)
             return
 
         fusion_net_input_channels = 0
@@ -48,6 +56,9 @@ class BevNet(nn.Module):
         else:
             self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
 
+        self.optimizer = torch.optim.Adam(self.fusion_net.parameters(), lr=cfg_model.fusion_net.lr)
+        self.loss = torch.nn.MSELoss()
+
     def forward(self, imgs, rots, trans, intrins, post_rots, post_trans, target_shape, pcd_new):
         """
 
@@ -58,13 +69,17 @@ class BevNet(nn.Module):
             intrins (torch.tensor shape=(BS, NR_CAMS, 3, 3)): intrinsic
             post_rots (torch.tensor shape=(BS, NR_CAMS, 3, 3)): transformations applied to pixel coordinates
             post_trans (torch.tensor shape=(BS, NR_CAMS, 3)): transformations applied to pixel coordinates
-            target_shape (torch.tensor shape=4): indicates shape of output target (BS, OUT_DIMS, GRID_CELLS_X, GRID_CELLS_Y)
-            pcd_new (dict): "points": (N,3) float32 ; "scan": (NR_TOTAL_SCANS) torch.int64 indicates where a new scan begins;  "batch": (NR_TOTAL_BATCHES) torch.int64 indicates to wich batch poins belong;
+            target_shape (torch.tensor shape=4): indicates shape of
+             output target (BS, OUT_DIMS, GRID_CELLS_X, GRID_CELLS_Y)
+            pcd_new (dict): "points": (N,3) float32 ; "scan": (NR_TOTAL_SCANS) torch.int64 indicates where a new scan
+            begins;  "batch": (NR_TOTAL_BATCHES) torch.int64 indicates to which batch points belong;
 
 
             --------------
-            pcd_new format explained:  "scan"=[500,302,400,501] ; "batch"=[802,901] indicates the first scan is from point 0-500 second scan 500-802 ...
-            same goes for the batches 0-802 is batch 0 therefore the first to scans belong to batch=0 and points 802-1703 to second batch.
+            pcd_new format explained:  "scan"=[500,302,400,501] ; "batch"=[802,901] indicates the first scan
+             is from point 0-500 second scan 500-802 ...
+            same goes for the batches 0-802 is batch 0 therefore the first to scans
+            belong to batch=0 and points 802-1703 to second batch.
 
         Returns:
             (torch.tensor shape=(BS, OUT_DIMS, GRID_CELLS_X, GRID_CELLS_Y)): shape of output target
@@ -114,27 +129,44 @@ class BevNet(nn.Module):
         features = torch.cat(features, dim=1)
         return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
 
+    def predicting(self):
+        loader_train, loader_val, loader_test = get_bev_dataloader()
+        for j, batch in enumerate(loader_test):
+            # print(j)
+            imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
+            pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
+                pcd_new["points"].cuda(),
+                pcd_new["batch"].cuda(),
+                pcd_new["scan"].cuda(),
+            )
+            with Timer(f"Inference {j}"):
+                pred = model(
+                    imgs.cuda(),
+                    rots.cuda(),
+                    trans.cuda(),
+                    intrins.cuda(),
+                    post_rots.cuda(),
+                    post_trans.cuda(),
+                    target.cuda().shape,
+                    pcd_new,
+                )
 
-if __name__ == "__main__":
+            if SAVE_PRED:
+                # Save predictions as grayscale images
+                pred = pred.cpu().detach().numpy()
+                cv2.imwrite(f"/home/rschmid/bev_out/{j}.jpg", pred[0, 0] * 255)
 
-    from bevnet.dataset import get_bev_dataloader
-
-    model_cfg = ModelParams()
-    model = BevNet(model_cfg)
-    model.cuda()
-
-    SAVE_PRED = True
-
-    loader_train, loader_val, loader_test = get_bev_dataloader()
-    for j, batch in enumerate(loader_train):
-        # print(j)
-        imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
-        pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
-            pcd_new["points"].cuda(),
-            pcd_new["batch"].cuda(),
-            pcd_new["scan"].cuda(),
-        )
-        with Timer(f"Inference {j}"):
+    def training(self):
+        loader_train, loader_val, loader_test = get_bev_dataloader()
+        for j, batch in enumerate(loader_train):
+            print(j)
+            imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
+            pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
+                pcd_new["points"].cuda(),
+                pcd_new["batch"].cuda(),
+                pcd_new["scan"].cuda(),
+            )
+            # with Timer(f"Inference {j}"):
             pred = model(
                 imgs.cuda(),
                 rots.cuda(),
@@ -146,7 +178,18 @@ if __name__ == "__main__":
                 pcd_new,
             )
 
-        if SAVE_PRED:
-            # Save predictions as grayscale images
-            pred = pred.cpu().detach().numpy()
-            cv2.imwrite(f"/home/rschmid/bev_out/{j}.jpg", pred[0, 0] * 255)
+            loss = self.loss(pred, target.cuda().float())
+            print(loss.item())
+            loss.backward()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
+
+if __name__ == "__main__":
+
+    model_cfg = ModelParams()
+    model = BevNet(model_cfg)
+    model.cuda()
+
+    model.predicting()
+    # model.training()

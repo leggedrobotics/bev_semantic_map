@@ -14,14 +14,13 @@ class DemoDataset(torch.utils.data.Dataset):
         super(DemoDataset, self).__init__()
         self.cfg_data = cfg_data
 
-        # feat = np.array(torch.load(self.cfg_data.image_path))
-        #
-        # self.features = torch.Tensor(feat)
         self.img_paths = sorted(glob.glob(f"{self.cfg_data.img_path}/*"))
         self.pcd_paths = sorted(glob.glob(f"{self.cfg_data.pcd_path}/*"))
+        self.target_paths = sorted(glob.glob(f"{self.cfg_data.target_path}/*"))
 
     def __len__(self):
-        return self.cfg_data.nr_data
+        # return self.cfg_data.nr_data
+        return len(self.img_paths)
 
     def get_image_data(self, idx):
         imgs = []
@@ -101,6 +100,7 @@ class DemoDataset(torch.utils.data.Dataset):
             torch.zeros(self.cfg_data.target_shape),
             torch.zeros(self.cfg_data.aux_shape),
         )  # Labels and aux labels in BEV space
+        target = torch.load(self.target_paths[idx]).unsqueeze(0)
         imgs, rots, trans, intrins, post_rots, post_trans, img_plots = self.get_image_data(idx)
         pcd_new = self.get_raw_pcd_data(idx)
 
@@ -135,7 +135,7 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
                 stacked_scans_ls.append(torch.cat(batch[j][i]["points"]))  # Concatenate all scans
                 stacked_scan_indexes.append(
                     torch.tensor([scan.shape[0] for scan in batch[j][i]["points"]])
-                )  # Get the number of points in each scan
+                )  # Get the index of all the scans
 
             res["points"] = torch.cat(stacked_scans_ls)
             res["scan"] = torch.cat(stacked_scan_indexes)
