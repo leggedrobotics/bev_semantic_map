@@ -149,4 +149,4 @@ if __name__ == "__main__":
         if SAVE_PRED:
             # Save predictions as grayscale images
             pred = pred.cpu().detach().numpy()
-            cv2.imwrite(f"/home/rschmid/bev_out/pred_{j}.jpg", pred[0, 0] * 255)
+            cv2.imwrite(f"/home/rschmid/bev_out/{j}.jpg", pred[0, 0] * 255)
