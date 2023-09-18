@@ -19,7 +19,7 @@ class NumpyToMapVisualizer:
         self.pub_grid_map = rospy.Publisher("gridmap", GridMap, queue_size=1)
         self.pub_occupancy_map = rospy.Publisher("occupancy_grid", OccupancyGrid, queue_size=1)
 
-    def gridmap_arr(self, arr, res, layers, reference_frame="map", publish=True, x=0, y=0):
+    def grid_map_arr(self, arr, res, layers, reference_frame="odom", publish=True, x=0, y=0):
         size_x = arr.shape[1]
         size_y = arr.shape[2]
 
@@ -56,7 +56,7 @@ class NumpyToMapVisualizer:
             self.pub_grid_map.publish(gm_msg)
         return gm_msg
 
-    def occupancy_map_arr(self, arr, res, reference_frame="map", publish=True, x=0, y=0):
+    def occupancy_map_arr(self, arr, res, reference_frame="odom", publish=True, x=0, y=0):
         size_x = arr.shape[1]
         size_y = arr.shape[2]
 
@@ -91,9 +91,9 @@ if __name__ == "__main__":
     # arr[arr <= 0.5] = 0
 
     res = 0.1
-    layers = ["l1"]
+    layers = ["mask"]
 
-    image_dir = "/home/rschmid/RosBags/output/6/supervision_mask"
+    image_dir = "/home/rschmid/RosBags/bevnet/mask"
 
     image_files = sorted([f for f in os.listdir(image_dir) if f.endswith(".pt")])
 
@@ -115,5 +115,6 @@ if __name__ == "__main__":
             # Convert bool image to uint8
             img = img.astype(np.uint8)
 
-            vis.occupancy_map_arr(img, res, x=0, y=0)
-            rospy.sleep(1)
+            # vis.occupancy_map_arr(img, res, x=0, y=0)
+            vis.grid_map_arr(img, res, layers, x=0, y=0)
+            rospy.sleep(1.0)
