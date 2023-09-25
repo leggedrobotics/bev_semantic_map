@@ -129,7 +129,7 @@ class BevNet(torch.nn.Module):
         features = torch.cat(features, dim=1)
         return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
 
-    def predicting(self):
+    def predict(self, save_pred=False):
         loader_train, loader_val, loader_test = get_bev_dataloader()
         for j, batch in enumerate(loader_test):
             # print(j)
@@ -151,15 +151,14 @@ class BevNet(torch.nn.Module):
                     pcd_new,
                 )
 
-            if SAVE_PRED:
+            if save_pred:
                 # Save predictions as grayscale images
                 pred = pred.cpu().detach().numpy()
                 cv2.imwrite(f"/home/rschmid/bev_out/{j}.jpg", pred[0, 0] * 255)
 
-    def training(self):
+    def train(self, save_model=False):
         loader_train, loader_val, loader_test = get_bev_dataloader()
         for j, batch in enumerate(loader_train):
-            print(j)
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
                 pcd_new["points"].cuda(),
@@ -179,10 +178,13 @@ class BevNet(torch.nn.Module):
             )
 
             loss = self.loss(pred, target.cuda().float())
-            print(loss.item())
+            print(f"{j} | {loss.item():.5f}")
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
+
+        if save_model:
+            torch.save(model.state_dict(), "bevnet.pth")
 
 
 if __name__ == "__main__":
@@ -191,5 +193,5 @@ if __name__ == "__main__":
     model = BevNet(model_cfg)
     model.cuda()
 
-    model.predicting()
-    # model.training()
+    # model.predict(save_pred=True)
+    model.train(save_model=True)
