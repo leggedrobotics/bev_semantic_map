@@ -8,9 +8,15 @@
 <!--        output="screen">-->
 <!--  </node>-->
 
- <node pkg="bevnet_visualizer"
-      name="map_visualizer"
-      type="map_visualizer.py"
+<!-- <node pkg="bevnet_visualizer"-->
+<!--      name="map_visualizer"-->
+<!--      type="map_visualizer.py"-->
+<!--      output="screen">-->
+<!--  </node>-->
+
+   <node pkg="bevnet_visualizer"
+      name="pred_visualizer"
+      type="pred_visualizer.py"
       output="screen">
   </node>
 

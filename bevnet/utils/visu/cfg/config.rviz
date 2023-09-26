@@ -8,7 +8,6 @@ Panels:
         - /Status1
         - /PointCloud21
         - /GridMap1
-        - /Map1
         - /PointCloud22
       Splitter Ratio: 0.5
     Tree Height: 1762
@@ -29,7 +28,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -90,7 +89,7 @@ Visualization Manager:
       Color Layer: mask
       Color Transformer: IntensityLayer
       ColorMap: ylgnbu
-      Enabled: false
+      Enabled: true
       Grid Cell Decimation: 1
       Grid Line Thickness: 0.10000000149011612
       Height Layer: mask
@@ -103,20 +102,20 @@ Visualization Manager:
       Min Intensity: 0
       Name: GridMap
       Show Grid Lines: true
-      Topic: /gridmap
+      Topic: /grid_map
       Unreliable: false
       Use ColorMap: true
-      Value: false
+      Value: true
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /occupancy_grid
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -173,7 +172,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 9.027082443237305
+      Distance: 26.92245101928711
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -189,9 +188,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5197972655296326
+      Pitch: 0.7847971320152283
       Target Frame: <Fixed Frame>
-      Yaw: 1.96225905418396
+      Yaw: 2.40726375579834
     Saved: ~
 Window Geometry:
   Displays:
