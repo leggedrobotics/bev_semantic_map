@@ -10,13 +10,13 @@ Date: Sep 2023
 
 import cv2
 import torch
+import argparse
 from bevnet.cfg import ModelParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
 from bevnet.utils import Timer
 
 # Global settings
-MODE = "train"  # "train" or "predict"
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -57,14 +57,14 @@ class BevTraversability:
             self._optimizer.zero_grad()
 
         if save_model:
-            torch.save(self._model.state_dict(), "weights/bevnet.pth")
+            torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
 
     def predict(self, load_model=True, model_name="bevnet", save_pred=False):
         if load_model:
             self._model.to(DEVICE)
             try:
                 self._model.load_state_dict(
-                    torch.load(f"weights/{model_name}.pth", map_location=torch.device(DEVICE)))
+                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)))
             except:
                 ValueError("This model configuration does not exist!")
 
@@ -95,16 +95,25 @@ class BevTraversability:
             if save_pred:
                 # Save predictions as grayscale images
                 pred = pred.cpu().detach().numpy()
-                cv2.imwrite(f"/home/rschmid/bev_out/{j}.jpg", pred[0, 0] * 255)
+                cv2.imwrite(f"data/pred/{j}.jpg", pred[0, 0] * 255)
 
 
 if __name__ == "__main__":
+    # Passing arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train", action='store_true',
+                        help="""If set trains""")
+    parser.add_argument("--pred", action='store_true',
+                        help="""If set predicts""")
+    parser.add_argument("--eval", action='store_true',
+                        help="""If set evaluates""")
+    args = parser.parse_args()
 
     bt = BevTraversability()
 
-    if MODE == "train":
-        bt.train()
-    elif MODE == "predict":
+    if args.train:
+        bt.train(save_model=True)
+    elif args.pred:
         bt.predict(load_model=True, save_pred=True)
     else:
-        raise ValueError(f"Unknown mode: {MODE}")
+        raise ValueError(f"Unknown mode")

@@ -3,5 +3,6 @@
 bevnet/network/ops/build*
 *.pyc
 *build/
-*samples/
+*data/
+*weights/
 
