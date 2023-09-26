@@ -85,15 +85,21 @@ class NumpyToMapVisualizer:
 
     def point_cloud_process(self, point_cloud, publish=False):
         header = std_msgs.msg.Header()
-        # header.stamp = rospy.Time.now()
         header.frame_id = "world"
 
         # Create a PointCloud2 message
-        pointcloud_msg = pc2.create_cloud_xyz32(header, pc)
+        pointcloud_msg = pc2.create_cloud_xyz32(header, point_cloud)
 
         if publish:
             print("[point_cloud_process]: publishing")
             self.pub_pc.publish(pointcloud_msg)
+
+    def correct_z_direction(self, point_cloud):
+
+        # Increase z value by 0.5
+        point_cloud[:, 2] += 0.5
+
+        return point_cloud
 
 
 if __name__ == "__main__":
@@ -118,26 +124,21 @@ if __name__ == "__main__":
     pc_files = sorted([f for f in os.listdir(pc_dir) if f.endswith(".pt")])
 
     while not rospy.is_shutdown():
-        for i, image_file in enumerate(img_files):
+        for i, _ in enumerate(img_files):
 
             if rospy.is_shutdown():
                 break
 
-            img_path = os.path.join(img_dir, image_file)
+            img_path = os.path.join(img_dir, img_files[i])
             img = torch.load(img_path, map_location=torch.device("cpu")).cpu().numpy()
-
-            if img is None:
-                continue
-
-            img = img[np.newaxis, ...]
-
-            # Convert bool image to uint8
-            img = img.astype(np.uint8)
+            img = img[np.newaxis, ...].astype(np.uint8)
 
             pc_path = os.path.join(pc_dir, pc_files[i])
             pc = torch.load(pc_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
 
+            vis.correct_z_direction(pc)
+
             vis.point_cloud_process(pc, publish=True)
             vis.occupancy_map_arr(img, res, x=0, y=0)
             # vis.grid_map_arr(img, res, layers, x=0, y=0)
-            rospy.sleep(1.0)
+            rospy.sleep(0.2)
