@@ -105,13 +105,6 @@ class NumpyToMapVisualizer:
 if __name__ == "__main__":
     vis = NumpyToMapVisualizer()
 
-    # shape = (1, 128, 128)
-    # arr = np.random.rand(*shape)
-    #
-    # # Threshold arr if bigger than 0.5
-    # arr[arr > 0.5] = 1
-    # arr[arr <= 0.5] = 0
-
     res = 0.1
     layers = ["mask"]
 
@@ -133,7 +126,6 @@ if __name__ == "__main__":
             img = cv2.imread(img_path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = img.astype(bool)
-            print(img.dtype)
             img = img[np.newaxis, ...].astype(np.uint8)
 
             # img = torch.from_numpy(img)

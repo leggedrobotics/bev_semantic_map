@@ -105,13 +105,6 @@ class NumpyToMapVisualizer:
 if __name__ == "__main__":
     vis = NumpyToMapVisualizer()
 
-    # shape = (1, 128, 128)
-    # arr = np.random.rand(*shape)
-    #
-    # # Threshold arr if bigger than 0.5
-    # arr[arr > 0.5] = 1
-    # arr[arr <= 0.5] = 0
-
     res = 0.1
     layers = ["mask"]
 
