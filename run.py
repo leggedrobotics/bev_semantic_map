@@ -30,7 +30,7 @@ class BevTraversability:
         self._loss = torch.nn.MSELoss()
 
     def train(self, save_model=False):
-        loader_train, loader_val, loader_test = get_bev_dataloader()
+        loader_train, _ = get_bev_dataloader(batch_size=4)
         for j, batch in enumerate(loader_train):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -38,7 +38,6 @@ class BevTraversability:
                 pcd_new["batch"].cuda(),
                 pcd_new["scan"].cuda(),
             )
-            # with Timer(f"Inference {j}"):
             pred = self._model(
                 imgs.cuda(),
                 rots.cuda(),
@@ -71,7 +70,7 @@ class BevTraversability:
             # Set the model to evaluation mode
             self._model.eval()
 
-        loader_train, loader_val, loader_test = get_bev_dataloader()
+        _, _, loader_test = get_bev_dataloader(return_test_dataloader=True)
         for j, batch in enumerate(loader_test):
             # print(j)
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
