@@ -46,16 +46,7 @@ class QuickCumsumCuda(torch.autograd.Function):
         interval_lengths[-1] = x.shape[0] - interval_starts[-1]
         geom_feats = geom_feats.int()
 
-        out = bev_pool_ext.bev_pool_forward(
-            x,
-            geom_feats,
-            interval_lengths,
-            interval_starts,
-            B,
-            D,
-            H,
-            W,
-        )
+        out = bev_pool_ext.bev_pool_forward(x, geom_feats, interval_lengths, interval_starts, B, D, H, W)
 
         ctx.save_for_backward(interval_starts, interval_lengths, geom_feats)
         ctx.saved_shapes = B, D, H, W
@@ -67,16 +58,7 @@ class QuickCumsumCuda(torch.autograd.Function):
         B, D, H, W = ctx.saved_shapes
 
         out_grad = out_grad.contiguous()
-        x_grad = bev_pool_ext.bev_pool_backward(
-            out_grad,
-            geom_feats,
-            interval_lengths,
-            interval_starts,
-            B,
-            D,
-            H,
-            W,
-        )
+        x_grad = bev_pool_ext.bev_pool_backward(out_grad, geom_feats, interval_lengths, interval_starts, B, D, H, W)
 
         return x_grad, None, None, None, None, None, None
 

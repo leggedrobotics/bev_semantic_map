@@ -1,19 +1,29 @@
 #!/usr/bin/env python
 
+import os
+import sys
 import rospy
 from grid_map_msgs.msg import GridMap, GridMapInfo
 from nav_msgs.msg import OccupancyGrid, MapMetaData
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension
+import std_msgs.msg
+from sensor_msgs.msg import PointCloud2
+import sensor_msgs.point_cloud2 as pc2
 import numpy as np
 import cv2
+import torch
+
+np.set_printoptions(threshold=sys.maxsize)
+
 
 class NumpyToMapVisualizer:
     def __init__(self, init_node=True):
         rospy.init_node("np_to_gridmap_visualizer", anonymous=False)
-        self.pub_grid_map = rospy.Publisher("gridmap", GridMap, queue_size=1)
+        self.pub_grid_map = rospy.Publisher("grid_map", GridMap, queue_size=1)
         self.pub_occupancy_map = rospy.Publisher("occupancy_grid", OccupancyGrid, queue_size=1)
+        self.pub_pc = rospy.Publisher("point_cloud", PointCloud2, queue_size=1)
 
-    def gridmap_arr(self, arr, res, layers, reference_frame="map", publish=True, x=0, y=0):
+    def grid_map_arr(self, arr, res, layers, reference_frame="world", publish=True, x=0, y=0):
         size_x = arr.shape[1]
         size_y = arr.shape[2]
 
@@ -31,7 +41,7 @@ class NumpyToMapVisualizer:
             data_tmp = Float32MultiArray()
             data_tmp.layout.dim.append(data_dim_0)
             data_tmp.layout.dim.append(data_dim_1)
-            data_tmp.data = arr[i, ::-1, ::-1].transpose().ravel()
+            data_tmp.data = arr[i, ::-1, ::-1].ravel()
             data.append(data_tmp)
 
         info = GridMapInfo()
@@ -46,11 +56,11 @@ class NumpyToMapVisualizer:
         info.pose.position.y = y
         gm_msg = GridMap(info=info, layers=layers, basic_layers=[], data=data)
         if publish:
-            print("publishing")
+            print("[grid_map_arr]: publishing")
             self.pub_grid_map.publish(gm_msg)
         return gm_msg
 
-    def occupancy_map_arr(self, arr, res, reference_frame="map", publish=True, x=0, y=0):
+    def occupancy_map_arr(self, arr, res, reference_frame="world", publish=True, x=0, y=0):
         size_x = arr.shape[1]
         size_y = arr.shape[2]
 
@@ -69,34 +79,59 @@ class NumpyToMapVisualizer:
         occupancy_grid.data = (arr * 100).astype(np.int8).ravel()  # Scale values to 0-100 and flatten
 
         if publish:
-            print("publishing")
+            print("[occupancy_map_arr]: publishing")
             self.pub_occupancy_map.publish(occupancy_grid)
         return occupancy_grid
+
+    def point_cloud_process(self, point_cloud, publish=False):
+        header = std_msgs.msg.Header()
+        header.frame_id = "world"
+
+        # Create a PointCloud2 message
+        pointcloud_msg = pc2.create_cloud_xyz32(header, point_cloud)
+
+        if publish:
+            print("[point_cloud_process]: publishing")
+            self.pub_pc.publish(pointcloud_msg)
+
+    def correct_z_direction(self, point_cloud):
+
+        # Increase z value by 0.5
+        point_cloud[:, 2] += 0.5
+
+        return point_cloud
 
 
 if __name__ == "__main__":
     vis = NumpyToMapVisualizer()
 
-    shape = (1, 512, 512)
-    arr = np.random.rand(*shape)
-
-    # Threshold arr if bigger than 0.5
-    arr[arr > 0.5] = 1
-    arr[arr <= 0.5] = 0
-
     res = 0.1
-    layers = ["l1"]
+    layers = ["mask"]
 
-    img = cv2.imread("/home/rschmid/img.jpg")
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = img[np.newaxis, ...]
+    data_dir = "/home/rschmid/RosBags/bevnet"
 
-    arr = img
+    img_dir = os.path.join(data_dir, "mask")
+    pc_dir = os.path.join(data_dir, "pcd")
 
-    # while not rospy.is_shutdown():
-    #     vis.gridmap_arr(arr, res, layers, x=0, y=0)
-    #     rospy.sleep(1)
+    img_files = sorted([f for f in os.listdir(img_dir) if f.endswith(".pt")])
+    pc_files = sorted([f for f in os.listdir(pc_dir) if f.endswith(".pt")])
 
     while not rospy.is_shutdown():
-        vis.occupancy_map_arr(arr, res, x=0, y=0)
-        rospy.sleep(1)
+        for i, _ in enumerate(img_files):
+
+            if rospy.is_shutdown():
+                break
+
+            img_path = os.path.join(img_dir, img_files[i])
+            img = torch.load(img_path, map_location=torch.device("cpu")).cpu().numpy()
+            img = img[np.newaxis, ...].astype(np.uint8)
+
+            pc_path = os.path.join(pc_dir, pc_files[i])
+            pc = torch.load(pc_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
+
+            vis.correct_z_direction(pc)
+
+            vis.point_cloud_process(pc, publish=True)
+            vis.occupancy_map_arr(img, res, x=0, y=0)
+            # vis.grid_map_arr(img, res, layers, x=0, y=0)
+            rospy.sleep(0.2)
