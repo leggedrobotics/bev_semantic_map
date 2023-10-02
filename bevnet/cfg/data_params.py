@@ -12,12 +12,16 @@ class DataParams:
     img_width: int = 128    # 640
     img_height: int = 128   # 480
 
-    img_path: str = "/home/rschmid/RosBags/bevnet/image"
-    pcd_path: str = "/home/rschmid/RosBags/bevnet/pcd"
-    target_path: str = "/home/rschmid/RosBags/bevnet/mask"
+    img_path: str = "/home/rschmid/RosBags/bevnet/image"    # Camera frame
+    pcd_path: str = "/home/rschmid/RosBags/bevnet/pcd"  # Base frame
+    target_path: str = "/home/rschmid/RosBags/bevnet/mask"  # Base frame
 
-    trans_pc_cam = [0.025654243139211275, 0.0406744001863073, -0.004784660744370228]
-    rot_pc_cam = [0.0010163463332151373, 0.1270025471498098, 0.9918701104718138, 0.007937506549489694]
+    # trans_pc_cam = [0.025654243139211275, 0.0406744001863073, -0.004784660744370228]
+    # rot_pc_cam = [0.0010163463332151373, 0.1270025471498098, 0.9918701104718138, 0.007937506549489694]
+
+    intrin = [575.6050407221768, 0.0, 745.7312198525915, 0.0, 578.564849365178, 519.5207040671075, 0.0, 0.0, 1.0]
+    trans_base_cam = [0.40449, 0.0, 0.0205]
+    rot_base_cam = [0.5, -0.4999999999999999, 0.5, -0.5000000000000001]
 
     nr_points: int = 5000
 

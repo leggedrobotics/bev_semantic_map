@@ -104,7 +104,12 @@ class BevTraversability:
             if save_pred:
                 # Save predictions as grayscale images
                 pred = pred.cpu().detach().numpy()
-                cv2.imwrite(f"data/pred/{j}.jpg", pred[0, 0] * 255)
+                pred_out = pred[0, 0] * 255
+
+                cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
+
+                if self._run_cfg.wandb_logging:
+                    wandb.log({"prediction": wandb.Image(pred_out)})
 
 
 if __name__ == "__main__":

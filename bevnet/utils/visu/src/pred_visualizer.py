@@ -108,7 +108,7 @@ if __name__ == "__main__":
     res = 0.1
     layers = ["mask"]
 
-    data_dir = "/home/rschmid/RosBags/bevnet"
+    data_dir = "/home/rschmid/git/bevnet/data"
 
     img_dir = os.path.join(data_dir, "pred")
 

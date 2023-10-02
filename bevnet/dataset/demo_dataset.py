@@ -35,6 +35,7 @@ class DemoDataset(torch.utils.data.Dataset):
             # post_rot = torch.eye(2)
             # post_tran = torch.zeros(2)
             intrin = torch.eye(3)
+            intrin = torch.Tensor(self.cfg_data.intrin).reshape(3, 3)
 
             # img = np.zeros((self.cfg_data.img_width, self.cfg_data.img_height, 3), dtype=np.uint8)
             img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
@@ -48,6 +49,8 @@ class DemoDataset(torch.utils.data.Dataset):
             intrins.append(intrin)
 
             H_base_camera = torch.eye(4)  # 4d tensor for tf from base to camera frame
+            H_base_camera[:3, :3] = torch.from_numpy(quaternion_matrix(np.array(self.cfg_data.rot_base_cam))[:3, :3])
+            H_base_camera[:3, 3] = torch.from_numpy(np.array(self.cfg_data.trans_base_cam))
             rots.append(H_base_camera[:3, :3])
             trans.append(H_base_camera[:3, 3])
 
@@ -67,7 +70,7 @@ class DemoDataset(torch.utils.data.Dataset):
 
     def get_raw_pcd_data(self, idx):
         # TODO: read point cloud in base frame
-        H_pc_cam = [*self.cfg_data.trans_pc_cam, *self.cfg_data.rot_pc_cam]
+        # H_pc_cam = [*self.cfg_data.trans_base_cam, *self.cfg_data.rot_base_cam]
         pcd_new = {}
         pcd_new["points"] = []
         for idx_pointcloud in range(self.cfg_data.nr_lidar_points_time):  # Only one lidar point for now
@@ -75,9 +78,9 @@ class DemoDataset(torch.utils.data.Dataset):
             # and 1
             points_in_base_frame = torch.load(self.pcd_paths[idx])
 
-            points_in_cam_frame = self.project_pc(points_in_base_frame, H_pc_cam)
+            # points_in_cam_frame = self.project_pc(points_in_base_frame, H_pc_cam)
 
-            pcd_new["points"].append(points_in_cam_frame)
+            pcd_new["points"].append(points_in_base_frame)  # Add points in base frame
         return pcd_new
 
     def project_pc(self, pc, pose):
@@ -92,7 +95,7 @@ class DemoDataset(torch.utils.data.Dataset):
         return torch.tensor(points_list, dtype=torch.float32)
 
     def __getitem__(self, idx):  # Called when iterating over the dataset
-        H_base_map = torch.eye(4)  # 4d tensor for tf from base to map frame
+        H_base_map = torch.eye(4)  # 4d tensor for tf from base to map frame, changing
         grid_map_resolution = torch.tensor([self.cfg_data.gird_map_resolution])
 
         # target, aux = torch.zeros((1, 512, 512)), torch.zeros((1, 512, 512))    # Labels and aux labels in BEV space
