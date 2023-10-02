@@ -5,4 +5,5 @@ bevnet/network/ops/build*
 *build/
 *data/
 *weights/
+*wandb/
 

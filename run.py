@@ -10,14 +10,16 @@ Date: Sep 2023
 
 import cv2
 import torch
+import wandb
 import argparse
-from bevnet.cfg import ModelParams
+
+from bevnet.cfg import ModelParams, RunParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
 from bevnet.utils import Timer
 
 # Global settings
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class BevTraversability:
@@ -25,6 +27,10 @@ class BevTraversability:
         self._model_cfg = ModelParams()
         self._model = BevNet(self._model_cfg)
         self._model.cuda()
+
+        self._run_cfg = RunParams()
+        if self._run_cfg.wandb_logging:
+            wandb.init(project="bevnet")
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
         self._loss = torch.nn.MSELoss()
@@ -51,6 +57,10 @@ class BevTraversability:
 
             loss = self._loss(pred, target.cuda().float())
             print(f"{j} | {loss.item():.5f}")
+
+            if self._run_cfg.wandb_logging:
+                wandb.log({"train_loss": loss.item()})
+
             loss.backward()
             self._optimizer.step()
             self._optimizer.zero_grad()
