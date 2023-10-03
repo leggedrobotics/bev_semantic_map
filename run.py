@@ -36,7 +36,7 @@ class BevTraversability:
         self._loss = torch.nn.MSELoss()
 
     def train(self, save_model=False):
-        loader_train, _ = get_bev_dataloader(batch_size=4)
+        loader_train, _ = get_bev_dataloader(batch_size=2)
         for j, batch in enumerate(loader_train):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (

@@ -9,8 +9,8 @@ class DataParams:
     nr_lidar_points_time: int = 1
     nr_data: int = 100
 
-    img_width: int = 128    # 640
-    img_height: int = 128   # 480
+    img_width: int = 640    # 640, 128; 720
+    img_height: int = 480   # 480, 128; 540
 
     img_path: str = "/home/rschmid/RosBags/bevnet/image"    # Camera frame
     pcd_path: str = "/home/rschmid/RosBags/bevnet/pcd"  # Base frame
@@ -19,7 +19,8 @@ class DataParams:
     # trans_pc_cam = [0.025654243139211275, 0.0406744001863073, -0.004784660744370228]
     # rot_pc_cam = [0.0010163463332151373, 0.1270025471498098, 0.9918701104718138, 0.007937506549489694]
 
-    intrin = [575.6050407221768, 0.0, 745.7312198525915, 0.0, 578.564849365178, 519.5207040671075, 0.0, 0.0, 1.0]
+    # intrin = [287.8025, 0.0000, 372.8656, 0.0000, 289.2824, 259.7603, 0.0000, 0.0000, 1.0000]   # 720 x 540
+    intrin = [255.8245, 0.0000, 331.4361, 0.0000, 257.1399, 230.8981, 0.0000, 0.0000, 1.0000]   # 640 x 480
     trans_base_cam = [0.40449, 0.0, 0.0205]
     rot_base_cam = [0.5, -0.4999999999999999, 0.5, -0.5000000000000001]
 

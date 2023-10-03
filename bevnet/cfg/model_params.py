@@ -25,10 +25,10 @@ class ModelParams:
 
         @dataclass
         class AugmentationParams:
-            H: int = 128  # 396
-            W: int = 128  # 640
-            fH: int = 128  # 256 (does not work), 640
-            fW: int = 128  # 384 (does not work), 480
+            H: int = 480  # 396, 128; 540
+            W: int = 640  # 640, 128; 720
+            fH: int = 480  # 256 (does not work), 640, 128; 512
+            fW: int = 640  # 384 (does not work), 480, 128; 640
             resize_lim: List[float] = field(default_factory=lambda: [0.6, 0.7])  # this should be roughly fH/H or fW/W
             bot_pct_lim: List[float] = field(
                 default_factory=lambda: [-0.05, 0.05]  # [-0.05, 0.05]

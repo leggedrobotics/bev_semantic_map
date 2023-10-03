@@ -5,7 +5,7 @@ import torch
 
 @dataclass
 class RunParams:
-    wandb_logging: bool = True
+    wandb_logging: bool = False
 
 
 data: RunParams = RunParams()

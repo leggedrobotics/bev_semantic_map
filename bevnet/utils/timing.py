@@ -34,7 +34,7 @@ class Timer:
         self.tic()
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        print(f"Time {self.name}: ", self.toc(), "ms")
+        print(f"Time {self.name}: {self.toc():.2f} ms")
 
     def tic(self):
         self.start.record()
