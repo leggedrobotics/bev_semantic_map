@@ -117,29 +117,39 @@ if __name__ == "__main__":
     res = 0.1
     layers = ["mask"]
 
-    data_dir = "/home/rschmid/git/bevnet/data"
+    data_dir = "/home/rschmid/RosBags/bevnet"
 
-    img_dir = os.path.join(data_dir, "pred")
+    mask_dir = os.path.join(data_dir, "mask")
+    pc_dir = os.path.join(data_dir, "pcd")
+    pred_dir = os.path.join(data_dir, "pred")
 
-    img_files = sorted([f for f in os.listdir(img_dir) if f.endswith(".jpg")])
+    mask_files = sorted([f for f in os.listdir(mask_dir) if f.endswith(".pt")])
+    pc_files = sorted([f for f in os.listdir(pc_dir) if f.endswith(".pt")])
+    pred_files = sorted([f for f in os.listdir(pred_dir) if f.endswith(".jpg")])
 
     while not rospy.is_shutdown():
-        for i, _ in enumerate(img_files):
-            print(i)
+        for i, _ in enumerate(mask_files):
 
             if rospy.is_shutdown():
                 break
 
-            img_path = os.path.join(img_dir, img_files[i])
+            mask_path = os.path.join(mask_dir, mask_files[i])
+            mask = torch.load(mask_path, map_location=torch.device("cpu")).cpu().numpy()
+            mask = mask[np.newaxis, ...].astype(np.uint8)
 
-            img = cv2.imread(img_path)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            img = vis.preprocess_image(img, 150, 200)
-            img = img.astype(bool)
-            img = img[np.newaxis, ...].astype(np.uint8)
+            pc_path = os.path.join(pc_dir, pc_files[i])
+            pc = torch.load(pc_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
 
-            # img = torch.from_numpy(img)
+            pred_path = os.path.join(pred_dir, pred_files[i])
+            pred = cv2.imread(pred_path)
+            pred = cv2.cvtColor(pred, cv2.COLOR_BGR2GRAY)
+            pred = vis.preprocess_image(pred, 150, 200)
+            pred = pred.astype(bool)
+            pred = pred[np.newaxis, ...].astype(np.uint8)
 
-            # vis.occupancy_map_arr(img, res, x=0, y=0)
-            vis.grid_map_arr(img, res, layers, x=0, y=0)
+            vis.correct_z_direction(pc)
+
+            vis.point_cloud_process(pc, publish=True)
+            vis.occupancy_map_arr(mask, res, x=0, y=0)
+            vis.grid_map_arr(pred, res, layers, x=0, y=0)
             rospy.sleep(0.2)

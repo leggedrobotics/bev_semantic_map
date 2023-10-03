@@ -9,6 +9,7 @@ Date: Sep 2023
 
 
 import cv2
+import numpy as np
 import torch
 import wandb
 import argparse
@@ -21,6 +22,9 @@ from bevnet.utils import Timer
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+np.set_printoptions(linewidth=200)
+torch.set_printoptions(edgeitems=200)
 
 
 class BevTraversability:
@@ -60,16 +64,15 @@ class BevTraversability:
                 target.cuda()
             )
 
-            loss, loss_pred = self._loss(pred)
-            # print(loss_pred)
+            loss_mean, loss_pred = self._loss(pred)
 
-            print(f"{j} | {loss.item():.5f}")
+            print(f"{j} | {loss_mean.item():.5f}")
 
             if self._run_cfg.wandb_logging:
-                wandb.log({"train_loss": loss.item()})
+                wandb.log({"train_loss": loss_mean.item()})
 
             self._optimizer.zero_grad()
-            loss.backward()
+            loss_mean.backward()
             self._optimizer.step()
 
         if save_model:
@@ -107,13 +110,12 @@ class BevTraversability:
                         post_trans.cuda(),
                         target.cuda().shape,
                         pcd_new,
-                        # target.cuda()
                     )
 
-            loss_train, loss = self._loss(pred)
+            loss_mean, loss_pred = self._loss(pred)
 
             # print(loss_train)
-            x = loss.view(128, 128)
+            x = loss_pred.view(128, 128)
 
             # Normalize the predictions
             pred = (x - torch.min(x)) / (torch.max(x) - torch.min(x))
@@ -122,6 +124,7 @@ class BevTraversability:
                 # Save predictions as grayscale images
                 pred = pred.cpu().detach().numpy()
                 pred_out = pred * 255
+                print(pred_out.reshape(-1))
 
                 cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
 

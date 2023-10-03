@@ -24,7 +24,7 @@ class AnomalyLoss(torch.nn.Module):
 
         # loss_aux["confidence"] = confidence
 
-        loss_train = -torch.mean(losses)
+        loss_mean = -torch.mean(losses)
         loss_pred = losses
 
-        return loss_train, loss_pred
+        return loss_mean, loss_pred
