@@ -15,6 +15,7 @@ import argparse
 
 from bevnet.cfg import ModelParams, RunParams
 from bevnet.network.bev_net import BevNet
+from bevnet.network.loss import AnomalyLoss
 from bevnet.dataset import get_bev_dataloader
 from bevnet.utils import Timer
 
@@ -33,7 +34,8 @@ class BevTraversability:
             wandb.init(project="bevnet")
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
-        # self._loss = torch.nn.MSELoss()
+        # self.optimizer = torch.optim.Adam(self.fusion_net.parameters(), lr=cfg_model.fusion_net.lr)
+        self._loss = AnomalyLoss()
 
     def train(self, save_model=False):
         self._model.train()
@@ -58,18 +60,15 @@ class BevTraversability:
                 target.cuda()
             )
 
-            losses = pred["logprob"].sum(1) + pred["log_det"]
-            loss = -torch.mean(losses)
+            loss, loss_pred = self._loss(pred)
+            # print(loss_pred)
 
-            # loss = self._model.loss(pred, target.cuda().float())
             print(f"{j} | {loss.item():.5f}")
 
             if self._run_cfg.wandb_logging:
                 wandb.log({"train_loss": loss.item()})
 
             loss.backward()
-            # self._model.optimizer.step()
-            # self._model.optimizer.zero_grad()
             self._optimizer.step()
             self._optimizer.zero_grad()
 
@@ -110,8 +109,7 @@ class BevTraversability:
                     target.cuda()
                 )
 
-            losses = pred["logprob"].sum(1) + pred["log_det"]
-            loss = -torch.mean(losses)
+            _, loss = self._loss(pred)
 
             print(loss)
             # pred = losses.view(128, 128)
