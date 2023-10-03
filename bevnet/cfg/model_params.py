@@ -10,9 +10,10 @@ class ModelParams:
     @dataclass
     class FusionNetParams:
         output_channels: int = 1
-        multi_head: bool = True
+        multi_head: bool = False
+        anomaly: bool = True
         apply_sigmoid: List[bool] = field(default_factory=lambda: [True])
-        lr: float = 1e-3
+        lr: float = 1e-4
 
     @dataclass
     class LiftSplatShootNetParams:

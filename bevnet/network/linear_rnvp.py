@@ -201,7 +201,7 @@ class SequentialFlow(nn.Sequential):
         return us, log_det
 
 
-class LinearRnvp(nn.Module):
+class LinearRNVP(nn.Module):
     """
     Main RNVP model, alternating affine coupling layers
     with permutations and/or batch normalization steps.
@@ -264,8 +264,8 @@ class LinearRnvp(nn.Module):
     def prior(self):
         return distributions.Normal(self.prior_mean, self.prior_var)  # Normal Gaussian with zero mean and unit variance
 
-    def forward(self, data: Data):
-        x = data.x
+    def forward(self, x: torch.Tensor):
+        # x is in form (BS*H*W, C)
         z, log_det = self.flows.forward(x, y=None)
         log_prob = self.logprob(z)
         return {"z": z, "log_det": log_det, "logprob": log_prob}

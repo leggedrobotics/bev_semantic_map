@@ -33,10 +33,12 @@ class BevTraversability:
             wandb.init(project="bevnet")
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
-        self._loss = torch.nn.MSELoss()
+        # self._loss = torch.nn.MSELoss()
 
     def train(self, save_model=False):
-        loader_train, _ = get_bev_dataloader(batch_size=2)
+        self._model.train()
+
+        loader_train, _ = get_bev_dataloader(batch_size=1)
         for j, batch in enumerate(loader_train):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -53,15 +55,21 @@ class BevTraversability:
                 post_trans.cuda(),
                 target.cuda().shape,
                 pcd_new,
+                target.cuda()
             )
 
-            loss = self._loss(pred, target.cuda().float())
+            losses = pred["logprob"].sum(1) + pred["log_det"]
+            loss = -torch.mean(losses)
+
+            # loss = self._model.loss(pred, target.cuda().float())
             print(f"{j} | {loss.item():.5f}")
 
             if self._run_cfg.wandb_logging:
                 wandb.log({"train_loss": loss.item()})
 
             loss.backward()
+            # self._model.optimizer.step()
+            # self._model.optimizer.zero_grad()
             self._optimizer.step()
             self._optimizer.zero_grad()
 
@@ -99,17 +107,25 @@ class BevTraversability:
                     post_trans.cuda(),
                     target.cuda().shape,
                     pcd_new,
+                    target.cuda()
                 )
 
-            if save_pred:
-                # Save predictions as grayscale images
-                pred = pred.cpu().detach().numpy()
-                pred_out = pred[0, 0] * 255
+            losses = pred["logprob"].sum(1) + pred["log_det"]
+            loss = -torch.mean(losses)
 
-                cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
+            print(loss)
+            # pred = losses.view(128, 128)
+            # print(pred)
 
-                if self._run_cfg.wandb_logging:
-                    wandb.log({"prediction": wandb.Image(pred_out)})
+            # if save_pred:
+            #     # Save predictions as grayscale images
+            #     pred = pred.cpu().detach().numpy()
+            #     pred_out = pred[0, 0] * 255
+            #
+            #     cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
+            #
+            #     if self._run_cfg.wandb_logging:
+            #         wandb.log({"prediction": wandb.Image(pred_out)})
 
 
 if __name__ == "__main__":

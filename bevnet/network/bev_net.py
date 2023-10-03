@@ -53,13 +53,19 @@ class BevNet(torch.nn.Module):
             self.fusion_net = network.MultiHeadBevEncode(
                 fusion_net_input_channels, cfg_model.fusion_net.output_channels
             )
-        else:
-            self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
+        if cfg_model.fusion_net.anomaly:
+            self.fusion_net = network.LinearRNVP(input_dim=fusion_net_input_channels, coupling_topology=[200],
+                                                 flow_n=10, batch_norm=True,
+                                                 mask_type='odds', conditioning_size=0,
+                                                 use_permutation=True, single_function=True)
+        # else:
+        #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
 
         self.optimizer = torch.optim.Adam(self.fusion_net.parameters(), lr=cfg_model.fusion_net.lr)
-        self.loss = torch.nn.MSELoss()
+        self.optimizer = torch.optim.Adam(self.fusion_net.parameters(), lr=cfg_model.fusion_net.lr)
+        # self.loss = torch.nn.MSELoss()
 
-    def forward(self, imgs, rots, trans, intrins, post_rots, post_trans, target_shape, pcd_new):
+    def forward(self, imgs, rots, trans, intrins, post_rots, post_trans, target_shape, pcd_new, target=None):
         """
 
         Args:
@@ -127,7 +133,18 @@ class BevNet(torch.nn.Module):
             features.append(image_features)
 
         features = torch.cat(features, dim=1)
-        return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
+
+        features = features.permute(0, 2, 3, 1)     # (BS, C, H, W) -> (BS, H, W, C)
+        features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
+
+        if target is not None:
+            target = target.view(-1)
+            features = features[target]     # Mask out only positive samples
+
+        # print("features shape", features.shape)
+
+        # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
+        return self.fusion_net(features)  # Store the tensor in a contiguous chunk of memory for efficiency
 
     # def predict(self, save_pred=False):
     #     loader_train, loader_val, loader_test = get_bev_dataloader()
