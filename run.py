@@ -40,7 +40,7 @@ class BevTraversability:
     def train(self, save_model=False):
         self._model.train()
 
-        loader_train, _ = get_bev_dataloader(batch_size=1)
+        loader_train, _ = get_bev_dataloader(batch_size=self._run_cfg.training_batch_size)
         for j, batch in enumerate(loader_train):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -68,11 +68,12 @@ class BevTraversability:
             if self._run_cfg.wandb_logging:
                 wandb.log({"train_loss": loss.item()})
 
+            self._optimizer.zero_grad()
             loss.backward()
             self._optimizer.step()
-            self._optimizer.zero_grad()
 
         if save_model:
+            print("Saving model ...")
             torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
 
     def predict(self, load_model=True, model_name="bevnet", save_pred=False):
@@ -80,16 +81,15 @@ class BevTraversability:
             self._model.to(DEVICE)
             try:
                 self._model.load_state_dict(
-                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)))
+                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)), strict=False)
             except:
                 ValueError("This model configuration does not exist!")
 
             # Set the model to evaluation mode
-            self._model.eval()
+            # self._model.eval()    # TODO: turning this on causes different output with big values
 
         _, _, loader_test = get_bev_dataloader(return_test_dataloader=True)
         for j, batch in enumerate(loader_test):
-            # print(j)
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
                 pcd_new["points"].cuda(),
@@ -97,33 +97,36 @@ class BevTraversability:
                 pcd_new["scan"].cuda(),
             )
             with Timer(f"Inference {j}"):
-                pred = self._model(
-                    imgs.cuda(),
-                    rots.cuda(),
-                    trans.cuda(),
-                    intrins.cuda(),
-                    post_rots.cuda(),
-                    post_trans.cuda(),
-                    target.cuda().shape,
-                    pcd_new,
-                    target.cuda()
-                )
+                with torch.no_grad():
+                    pred = self._model(
+                        imgs.cuda(),
+                        rots.cuda(),
+                        trans.cuda(),
+                        intrins.cuda(),
+                        post_rots.cuda(),
+                        post_trans.cuda(),
+                        target.cuda().shape,
+                        pcd_new,
+                        # target.cuda()
+                    )
 
-            _, loss = self._loss(pred)
+            loss_train, loss = self._loss(pred)
 
-            print(loss)
-            # pred = losses.view(128, 128)
-            # print(pred)
+            # print(loss_train)
+            x = loss.view(128, 128)
 
-            # if save_pred:
-            #     # Save predictions as grayscale images
-            #     pred = pred.cpu().detach().numpy()
-            #     pred_out = pred[0, 0] * 255
-            #
-            #     cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
-            #
-            #     if self._run_cfg.wandb_logging:
-            #         wandb.log({"prediction": wandb.Image(pred_out)})
+            # Normalize the predictions
+            pred = (x - torch.min(x)) / (torch.max(x) - torch.min(x))
+
+            if save_pred:
+                # Save predictions as grayscale images
+                pred = pred.cpu().detach().numpy()
+                pred_out = pred * 255
+
+                cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
+
+                if self._run_cfg.wandb_logging:
+                    wandb.log({"prediction": wandb.Image(pred_out)})
 
 
 if __name__ == "__main__":
@@ -139,6 +142,7 @@ if __name__ == "__main__":
 
     bt = BevTraversability()
 
+    # Setting training mode
     if args.train:
         bt.train(save_model=True)
     elif args.pred:

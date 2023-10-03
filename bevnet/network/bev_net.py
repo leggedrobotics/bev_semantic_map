@@ -54,6 +54,7 @@ class BevNet(torch.nn.Module):
                 fusion_net_input_channels, cfg_model.fusion_net.output_channels
             )
         if cfg_model.fusion_net.anomaly:
+            # fusion_net_input_channels = 160
             self.fusion_net = network.LinearRNVP(input_dim=fusion_net_input_channels, coupling_topology=[200],
                                                  flow_n=10, batch_norm=True,
                                                  mask_type='odds', conditioning_size=0,
@@ -133,12 +134,14 @@ class BevNet(torch.nn.Module):
 
         features = torch.cat(features, dim=1)
 
+        # Change feature dimension
         features = features.permute(0, 2, 3, 1)     # (BS, C, H, W) -> (BS, H, W, C)
         features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
 
+        # If target is available, mask out only positive samples
         if target is not None:
             target = target.view(-1)
-            features = features[target]     # Mask out only positive samples
+            features = features[target]
 
         # print("features shape", features.shape)
 
