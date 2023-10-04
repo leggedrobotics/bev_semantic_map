@@ -1,0 +1,13 @@
+<launch>
+<!--  set args -->
+  <param name="show_mask" value="true" />
+  <param name="show_pc" value="true" />
+  <param name="show_pred" value="true" />
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/cfg/train.rviz" />
+   <node pkg="bevnet_visualizer"
+      name="bev_visualizer"
+      type="bev_visualizer.py"
+      output="screen">
+  </node>
+</launch>

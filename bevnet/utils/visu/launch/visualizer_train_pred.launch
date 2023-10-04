@@ -1,8 +1,0 @@
-<launch>
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/cfg/train.rviz" />
-   <node pkg="bevnet_visualizer"
-      name="train_pred_visualizer"
-      type="train_pred_visualizer.py"
-      output="screen">
-  </node>
-</launch>
