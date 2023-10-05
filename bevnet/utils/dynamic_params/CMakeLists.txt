@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(dynamic_reconfigure_params)
+project(dynamic_params)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -9,7 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 generate_dynamic_reconfigure_options(
-  cfg/Tutorials.cfg
+  cfg/Params.cfg
 )
 
 catkin_package(
