@@ -9,6 +9,7 @@ from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import std_msgs.msg
 from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2
+import dynamic_reconfigure.client
 import numpy as np
 import cv2
 import torch
@@ -18,9 +19,6 @@ np.set_printoptions(threshold=sys.maxsize)
 # Global params
 RESOLUTION = 0.1
 
-LOWER_LIM = 180
-UPPER_LIM = 250
-
 LAYERS = ["mask"]
 
 DATA_DIR = "/home/rschmid/RosBags/bevnet"
@@ -28,7 +26,6 @@ DATA_DIR = "/home/rschmid/RosBags/bevnet"
 
 class NumpyToMapVisualizer:
     def __init__(self):
-        rospy.init_node("np_to_gridmap_visualizer", anonymous=False)
 
         self.show_mask = rospy.get_param("show_mask")
         self.show_pc = rospy.get_param("show_pc")
@@ -124,6 +121,11 @@ class NumpyToMapVisualizer:
 
 
 if __name__ == "__main__":
+    rospy.init_node("bevnet_visualizer", anonymous=False)
+
+    LOWER_LIM = 0
+    UPPER_LIM = 0
+
     vis = NumpyToMapVisualizer()
 
     num_files = 0
@@ -182,4 +184,8 @@ if __name__ == "__main__":
                 vis.grid_map_arr(pred, RESOLUTION, LAYERS, x=0, y=0)
 
             print(i)
-            rospy.sleep(0.2)
+
+            LOWER_LIM = rospy.get_param("dynamic_params/LOWER_LIM")
+            UPPER_LIM = rospy.get_param("dynamic_params/UPPER_LIM")
+
+            rospy.sleep(1)

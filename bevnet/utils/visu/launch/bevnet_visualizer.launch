@@ -6,8 +6,8 @@
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/cfg/train.rviz" />
    <node pkg="bevnet_visualizer"
-      name="bev_visualizer"
-      type="bev_visualizer.py"
+      name="bevnet_visualizer"
+      type="bevnet_visualizer.py"
       output="screen">
   </node>
 </launch>
