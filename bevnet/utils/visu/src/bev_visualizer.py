@@ -17,6 +17,10 @@ np.set_printoptions(threshold=sys.maxsize)
 
 # Global params
 RESOLUTION = 0.1
+
+LOWER_LIM = 180
+UPPER_LIM = 250
+
 LAYERS = ["mask"]
 
 DATA_DIR = "/home/rschmid/RosBags/bevnet"
@@ -171,7 +175,7 @@ if __name__ == "__main__":
                 pred_path = os.path.join(pred_dir, pred_files[i])
                 pred = cv2.imread(pred_path)
                 pred = cv2.cvtColor(pred, cv2.COLOR_BGR2GRAY)
-                pred = vis.preprocess_image(pred, 150, 200)
+                pred = vis.preprocess_image(pred, LOWER_LIM, UPPER_LIM)
                 pred = pred.astype(bool)
                 pred = pred[np.newaxis, ...].astype(np.uint8)
 

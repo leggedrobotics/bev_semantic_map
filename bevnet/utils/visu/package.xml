@@ -13,5 +13,6 @@
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>dynamic_reconfigure</depend>
 
 </package>
