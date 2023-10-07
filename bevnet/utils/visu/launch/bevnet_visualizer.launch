@@ -4,6 +4,12 @@
   <param name="show_pc" value="true" />
   <param name="show_pred" value="true" />
 
+  <!-- Launch rqt_reconfigure using rosrun -->
+<!--  <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" output="screen" />-->
+
+  <!-- Launch server.py using rosrun -->
+  <node name="dynamic_params" pkg="dynamic_params" type="server.py" output="screen"/>
+
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/cfg/train.rviz" />
    <node pkg="bevnet_visualizer"
       name="bevnet_visualizer"

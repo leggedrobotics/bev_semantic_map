@@ -188,4 +188,4 @@ if __name__ == "__main__":
             LOWER_LIM = rospy.get_param("dynamic_params/LOWER_LIM")
             UPPER_LIM = rospy.get_param("dynamic_params/UPPER_LIM")
 
-            rospy.sleep(1)
+            rospy.sleep(0.2)

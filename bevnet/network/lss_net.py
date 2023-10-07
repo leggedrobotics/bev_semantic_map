@@ -189,6 +189,8 @@ class LiftSplatShootNet(nn.Module):
         # D x H x W x 3
         frustum = torch.stack((xs, ys, ds), -1)
 
+        print(frustum.shape)
+
         return nn.Parameter(frustum, requires_grad=False)
 
     def get_geometry(self, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
