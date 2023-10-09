@@ -1,18 +1,10 @@
-import bevnet.network as network_simple
 from bevnet.network import voxelize_pcd_scans
 import torch
-from dataclasses import asdict
 from bevnet.cfg import ModelParams
 
-from bevnet.utils import SystemLevelTimer, SystemLevelContextTimer, accumulate_time, Timer
-
 from bevnet import network
-from bevnet.dataset import get_bev_dataloader
 
 import torch.nn.functional as F
-import tqdm
-
-import cv2
 
 # Global settings
 SAVE_PRED = True

@@ -124,7 +124,7 @@ class BevTraversability:
                 # Save predictions as grayscale images
                 pred = pred.cpu().detach().numpy()
                 pred_out = pred * 255
-                print(pred_out.reshape(-1))
+                # print(pred_out.reshape(-1))
 
                 cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
 

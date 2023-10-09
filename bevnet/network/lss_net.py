@@ -177,7 +177,7 @@ class LiftSplatShootNet(nn.Module):
         self.use_quickcumsum = True
         self.use_quickcumsum_cuda = True
 
-    def create_frustum(self):
+    def create_frustum(self, save_frustrum=False):
         # make grid in image plane
         ogfH, ogfW = self.data_aug_conf.fH, self.data_aug_conf.fW
         fH, fW = ogfH // self.downsample, ogfW // self.downsample
@@ -189,7 +189,13 @@ class LiftSplatShootNet(nn.Module):
         # D x H x W x 3
         frustum = torch.stack((xs, ys, ds), -1)
 
-        print(frustum.shape)
+        if save_frustrum:
+            # Save as torch tensor
+            torch.save(frustum, "/home/rschmid/frustrum.pt")
+
+        # frustum = frustum[:-1]
+
+        # print(frustum[-2])
 
         return nn.Parameter(frustum, requires_grad=False)
 
