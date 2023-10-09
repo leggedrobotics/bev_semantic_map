@@ -30,10 +30,12 @@ class NumpyToMapVisualizer:
         self.show_mask = rospy.get_param("show_mask")
         self.show_pc = rospy.get_param("show_pc")
         self.show_pred = rospy.get_param("show_pred")
+        self.show_frustrum = rospy.get_param("show_frustrum")
 
         self.pub_grid_map = rospy.Publisher("grid_map", GridMap, queue_size=1)
         self.pub_occupancy_map = rospy.Publisher("occupancy_grid", OccupancyGrid, queue_size=1)
         self.pub_pc = rospy.Publisher("point_cloud", PointCloud2, queue_size=1)
+        self.pub_frustrum = rospy.Publisher("frustrum", PointCloud2, queue_size=1)
 
     def preprocess_image(self, img, lower_bound=0, upper_bound=255):
         # Apply histogram equalization to enhance contrast
@@ -112,6 +114,18 @@ class NumpyToMapVisualizer:
         if publish:
             self.pub_pc.publish(pointcloud_msg)
 
+    def frustrum_process(self, point_cloud, publish=False):
+        header = std_msgs.msg.Header()
+        header.frame_id = "world"
+
+        point_cloud = point_cloud.reshape(-1, 3)
+
+        # Create a PointCloud2 message
+        pointcloud_msg = pc2.create_cloud_xyz32(header, point_cloud)
+
+        if publish:
+            self.pub_frustrum.publish(pointcloud_msg)
+
     def correct_z_direction(self, point_cloud):
 
         # Increase z value by 0.5
@@ -151,6 +165,10 @@ if __name__ == "__main__":
         if len(pred_files) > 0:
             num_files = len(pred_files)
 
+    if vis.show_frustrum:
+        frustrum_published = False
+        frustrum_path = os.path.join(DATA_DIR, "frustrum", "frustrum.pt")
+
     assert num_files > 0, "No files to go through!"
 
     while not rospy.is_shutdown():
@@ -182,6 +200,11 @@ if __name__ == "__main__":
                 pred = pred[np.newaxis, ...].astype(np.uint8)
 
                 vis.grid_map_arr(pred, RESOLUTION, LAYERS, x=0, y=0)
+
+            if vis.show_frustrum and not frustrum_published:
+                frustrum = torch.load(frustrum_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
+                vis.frustrum_process(frustrum, publish=True)
+                # frustrum_published = True
 
             print(i)
 

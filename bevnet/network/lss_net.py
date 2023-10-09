@@ -11,6 +11,7 @@ from torchvision.models.resnet import resnet18
 from pytictac import Timer
 from .lss_tools import gen_dx_bx, cumsum_trick, QuickCumsum
 from bevnet.ops import bev_pool
+from icecream import ic
 
 
 class Up(nn.Module):
@@ -187,15 +188,7 @@ class LiftSplatShootNet(nn.Module):
         ys = torch.linspace(0, ogfH - 1, fH, dtype=torch.float).view(1, fH, 1).expand(D, fH, fW)
 
         # D x H x W x 3
-        frustum = torch.stack((xs, ys, ds), -1)
-
-        if save_frustrum:
-            # Save as torch tensor
-            torch.save(frustum, "/home/rschmid/frustrum.pt")
-
-        # frustum = frustum[:-1]
-
-        # print(frustum[-2])
+        frustum = torch.stack((xs, ys, ds), -1)     # Frustrum in image plane
 
         return nn.Parameter(frustum, requires_grad=False)
 
@@ -293,6 +286,7 @@ class LiftSplatShootNet(nn.Module):
 
     def get_voxels(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
+        # torch.save(geom, "/home/rschmid/frustrum.pt")
         x = self.get_cam_feats(x, *args, **kwargs)  # Splatting features
         x = self.voxel_pooling(geom, x, *args, **kwargs)  # Projecting on 2d BEV grid
         return x
