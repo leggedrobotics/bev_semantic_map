@@ -286,7 +286,10 @@ class LiftSplatShootNet(nn.Module):
 
     def get_voxels(self, x, rots, trans, intrins, post_rots, post_trans, *args, **kwargs):
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
-        # torch.save(geom, "/home/rschmid/frustrum.pt")
+
+        # Save the frustrum for debugging
+        # torch.save(geom, "/home/rschmid/RosBags/bevnet/frustrum/frustrum.pt")
+
         x = self.get_cam_feats(x, *args, **kwargs)  # Splatting features
         x = self.voxel_pooling(geom, x, *args, **kwargs)  # Projecting on 2d BEV grid
         return x

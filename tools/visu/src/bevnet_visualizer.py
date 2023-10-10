@@ -21,8 +21,6 @@ RESOLUTION = 0.1
 
 LAYERS = ["mask"]
 
-DATA_DIR = "/home/rschmid/RosBags/bevnet"
-
 
 class NumpyToMapVisualizer:
     def __init__(self):
@@ -31,6 +29,7 @@ class NumpyToMapVisualizer:
         self.show_pc = rospy.get_param("show_pc")
         self.show_pred = rospy.get_param("show_pred")
         self.show_frustrum = rospy.get_param("show_frustrum")
+        self.data_dir = rospy.get_param("data_dir")
 
         self.pub_grid_map = rospy.Publisher("grid_map", GridMap, queue_size=1)
         self.pub_occupancy_map = rospy.Publisher("occupancy_grid", OccupancyGrid, queue_size=1)
@@ -129,7 +128,7 @@ class NumpyToMapVisualizer:
     def correct_z_direction(self, point_cloud):
 
         # Increase z value by 0.5
-        point_cloud[:, 2] += 0.5
+        point_cloud[:, 2] += 0.6
 
         return point_cloud
 
@@ -145,21 +144,21 @@ if __name__ == "__main__":
     num_files = 0
 
     if vis.show_mask:
-        mask_dir = os.path.join(DATA_DIR, "mask")
+        mask_dir = os.path.join(vis.data_dir, "mask")
         mask_files = sorted([f for f in os.listdir(mask_dir) if f.endswith(".pt")])
 
         if len(mask_files) > 0:
             num_files = len(mask_files)
 
     if vis.show_pc:
-        pc_dir = os.path.join(DATA_DIR, "pcd")
+        pc_dir = os.path.join(vis.data_dir, "pcd")
         pc_files = sorted([f for f in os.listdir(pc_dir) if f.endswith(".pt")])
 
         if len(pc_files) > 0:
             num_files = len(pc_files)
 
     if vis.show_pred:
-        pred_dir = os.path.join(DATA_DIR, "pred")
+        pred_dir = os.path.join(vis.data_dir, "pred")
         pred_files = sorted([f for f in os.listdir(pred_dir) if f.endswith(".jpg")])
 
         if len(pred_files) > 0:
@@ -167,7 +166,7 @@ if __name__ == "__main__":
 
     if vis.show_frustrum:
         frustrum_published = False
-        frustrum_path = os.path.join(DATA_DIR, "frustrum", "frustrum.pt")
+        frustrum_path = os.path.join(vis.data_dir, "frustrum", "frustrum.pt")
 
     assert num_files > 0, "No files to go through!"
 

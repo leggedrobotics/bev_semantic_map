@@ -19,10 +19,10 @@ class ModelParams:
     class LiftSplatShootNetParams:
         @dataclass
         class GridParams:
-            xbound: List[float] = field(default_factory=lambda: [-6.4, 6.4, 0.1])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
-            ybound: List[float] = field(default_factory=lambda: [-6.4, 6.4, 0.1])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
-            zbound: List[float] = field(default_factory=lambda: [-10.0, 10.0, 20.0])  # [-20.0, 20.0, 40.0]
-            dbound: List[float] = field(default_factory=lambda: [4.0, 12.0, 0.1])  # [4.0, 50.0, 0.2]
+            xbound: List[float] = field(default_factory=lambda: [-3.2, 3.2, 0.05])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
+            ybound: List[float] = field(default_factory=lambda: [-3.2, 3.2, 0.05])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
+            zbound: List[float] = field(default_factory=lambda: [-5.0, 5.0, 10.0])  # [-20.0, 20.0, 40.0]
+            dbound: List[float] = field(default_factory=lambda: [1.0, 3.2, 0.05])  # [4.0, 50.0, 0.2]
 
         @dataclass
         class AugmentationParams:
@@ -46,7 +46,7 @@ class ModelParams:
     class PointPillarsParams:
         voxel_size: List[float] = field(default_factory=lambda: [0.1, 0.1, 1.0])  # [0.2, 0.2, 1.0]
         point_cloud_range: List[float] = field(
-            default_factory=lambda: [-6.4, -6.4, -10, 6.4, 6.4, 10]
+            default_factory=lambda: [-3.2, -3.2, -10, 3.2, 3.2, 10]
         )  # [-51.2, -51.2, -10, 51.2, 51.2, 10], [-12.8, -12.8, -10, 12.8, 12.8, 10]
         max_num_points: int = 32  # 32
         max_voxels: Tuple[float] = field(default_factory=lambda: (16000, 40000))  # (16000, 40000)

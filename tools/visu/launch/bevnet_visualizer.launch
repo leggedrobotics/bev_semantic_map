@@ -2,8 +2,9 @@
 <!--  set args -->
   <param name="show_mask" value="true" />
   <param name="show_pc" value="true" />
-  <param name="show_pred" value="true" />
-  <param name="show_frustrum" value="true" />
+  <param name="show_pred" value="false" />
+  <param name="show_frustrum" value="false" />
+  <param name="data_dir" value="/home/rschmid/RosBags/bevnet2" />
 
   <!-- Launch rqt_reconfigure using rosrun -->
 <!--  <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" output="screen" />-->
@@ -11,7 +12,7 @@
   <!-- Launch server.py using rosrun -->
   <node name="dynamic_params" pkg="dynamic_params" type="server.py" output="screen"/>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/cfg/train.rviz" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/rviz/train.rviz" />
    <node pkg="bevnet_visualizer"
       name="bevnet_visualizer"
       type="bevnet_visualizer.py"
