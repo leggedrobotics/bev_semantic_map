@@ -149,6 +149,8 @@ if __name__ == "__main__":
 
         if len(mask_files) > 0:
             num_files = len(mask_files)
+        else:
+            vis.show_mask = False
 
     if vis.show_pc:
         pc_dir = os.path.join(vis.data_dir, "pcd")
@@ -156,6 +158,8 @@ if __name__ == "__main__":
 
         if len(pc_files) > 0:
             num_files = len(pc_files)
+        else:
+            vis.show_pc = False
 
     if vis.show_pred:
         pred_dir = os.path.join(vis.data_dir, "pred")
@@ -163,6 +167,8 @@ if __name__ == "__main__":
 
         if len(pred_files) > 0:
             num_files = len(pred_files)
+        else:
+            vis.show_pred= False
 
     if vis.show_frustrum:
         frustrum_published = False

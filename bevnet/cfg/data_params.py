@@ -26,8 +26,8 @@ class DataParams:
 
     nr_points: int = 5000
 
-    target_shape: Tuple[int, int, int] = (1, 128, 128)
-    aux_shape: Tuple[int, int, int] = (1, 128, 128)
+    target_shape: Tuple[int, int, int] = (1, 64, 64)
+    aux_shape: Tuple[int, int, int] = (1, 64, 64)
 
     gird_map_resolution: float = 0.1
 

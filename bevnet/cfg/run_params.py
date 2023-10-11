@@ -6,7 +6,7 @@ import torch
 @dataclass
 class RunParams:
     wandb_logging: bool = False
-    training_batch_size: int = 1    # TODO: make running with batch size > 1 work
+    training_batch_size: int = 2    # TODO: make running with batch size > 1 work
 
 
 data: RunParams = RunParams()

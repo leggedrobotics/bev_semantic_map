@@ -48,7 +48,7 @@ class BevNet(torch.nn.Module):
         if cfg_model.fusion_net.anomaly:
             # fusion_net_input_channels = 160
             self.fusion_net = network.LinearRNVP(input_dim=fusion_net_input_channels, coupling_topology=[200],
-                                                 flow_n=10, batch_norm=True,
+                                                 flow_n=100, batch_norm=True,
                                                  mask_type='odds', conditioning_size=0,
                                                  use_permutation=True, single_function=True)
         # else:
@@ -103,6 +103,8 @@ class BevNet(torch.nn.Module):
                 )
                 # print("pcd feat:", pcd_features.shape)
                 # print("target shape:", target_shape)
+                # print(target_shape[2])
+                # print(target_shape[3])
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
                 # print("pcd feat:", pcd_features.shape)
                 features.append(pcd_features)
@@ -128,74 +130,20 @@ class BevNet(torch.nn.Module):
 
         # Change feature dimension
         features = features.permute(0, 2, 3, 1)     # (BS, C, H, W) -> (BS, H, W, C)
-        features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
+        # features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
+
+        features = features.view(-1, features.shape[1]*features.shape[2], features.shape[-1])    # (BS, H, W, C) -> (BS, H*W, C)
 
         # If target is available, mask out only positive samples
         if target is not None:
-            target = target.view(-1)
+            # target = target.view(-1)
+            target = target.view(-1, target.shape[2] * target.shape[3])  # (BS, H, W, C) -> (BS, H*W)
             features = features[target]
-
-        # print("features shape", features.shape)
+        else:
+            features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C
 
         # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
         return self.fusion_net(features)  # Store the tensor in a contiguous chunk of memory for efficiency
-
-    # def predict(self, save_pred=False):
-    #     loader_train, loader_val, loader_test = get_bev_dataloader()
-    #     for j, batch in enumerate(loader_test):
-    #         # print(j)
-    #         imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
-    #         pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
-    #             pcd_new["points"].cuda(),
-    #             pcd_new["batch"].cuda(),
-    #             pcd_new["scan"].cuda(),
-    #         )
-    #         with Timer(f"Inference {j}"):
-    #             pred = model(
-    #                 imgs.cuda(),
-    #                 rots.cuda(),
-    #                 trans.cuda(),
-    #                 intrins.cuda(),
-    #                 post_rots.cuda(),
-    #                 post_trans.cuda(),
-    #                 target.cuda().shape,
-    #                 pcd_new,
-    #             )
-    #
-    #         if save_pred:
-    #             # Save predictions as grayscale images
-    #             pred = pred.cpu().detach().numpy()
-    #             cv2.imwrite(f"/home/rschmid/bev_out/{j}.jpg", pred[0, 0] * 255)
-    #
-    # def train(self, save_model=False):
-    #     loader_train, loader_val, loader_test = get_bev_dataloader()
-    #     for j, batch in enumerate(loader_train):
-    #         imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
-    #         pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
-    #             pcd_new["points"].cuda(),
-    #             pcd_new["batch"].cuda(),
-    #             pcd_new["scan"].cuda(),
-    #         )
-    #         # with Timer(f"Inference {j}"):
-    #         pred = model(
-    #             imgs.cuda(),
-    #             rots.cuda(),
-    #             trans.cuda(),
-    #             intrins.cuda(),
-    #             post_rots.cuda(),
-    #             post_trans.cuda(),
-    #             target.cuda().shape,
-    #             pcd_new,
-    #         )
-    #
-    #         loss = self.loss(pred, target.cuda().float())
-    #         print(f"{j} | {loss.item():.5f}")
-    #         loss.backward()
-    #         self.optimizer.step()
-    #         self.optimizer.zero_grad()
-    #
-    #     if save_model:
-    #         torch.save(model.state_dict(), "../weights/bevnet.pth")
 
 
 if __name__ == "__main__":

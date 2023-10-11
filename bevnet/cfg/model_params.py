@@ -19,8 +19,8 @@ class ModelParams:
     class LiftSplatShootNetParams:
         @dataclass
         class GridParams:
-            xbound: List[float] = field(default_factory=lambda: [-3.2, 3.2, 0.05])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
-            ybound: List[float] = field(default_factory=lambda: [-3.2, 3.2, 0.05])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
+            xbound: List[float] = field(default_factory=lambda: [-3.2, 3.2, 0.1])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
+            ybound: List[float] = field(default_factory=lambda: [-3.2, 3.2, 0.1])  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
             zbound: List[float] = field(default_factory=lambda: [-5.0, 5.0, 10.0])  # [-20.0, 20.0, 40.0]
             dbound: List[float] = field(default_factory=lambda: [1.0, 3.2, 0.05])  # [4.0, 50.0, 0.2]
 
@@ -55,8 +55,10 @@ class ModelParams:
     fusion_net: FusionNetParams = FusionNetParams()
     lift_splat_shoot_net: LiftSplatShootNetParams = LiftSplatShootNetParams()
     point_pillars: PointPillarsParams = PointPillarsParams()
-    image_backbone: str = "lift_splat_shoot_net"  # If skip, set to "skip"
+    # image_backbone: str = "lift_splat_shoot_net"  # If skip, set to "skip"
+    image_backbone: str = "skip"  # If skip, set to "skip"
     pointcloud_backbone: str = "point_pillars"  # If skip, set to "skip"
+    # pointcloud_backbone: str = "skip"  # If skip, set to "skip"
 
 
 model: ModelParams = ModelParams()

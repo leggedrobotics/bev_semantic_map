@@ -38,7 +38,6 @@ class BevTraversability:
             wandb.init(project="bevnet")
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
-        # self.optimizer = torch.optim.Adam(self.fusion_net.parameters(), lr=cfg_model.fusion_net.lr)
         self._loss = AnomalyLoss()
 
     def train(self, save_model=False):
@@ -91,7 +90,7 @@ class BevTraversability:
             # Set the model to evaluation mode
             # self._model.eval()    # TODO: turning this on causes different output with big values
 
-        _, _, loader_test = get_bev_dataloader(return_test_dataloader=True)
+        _, _, loader_test = get_bev_dataloader(return_test_dataloader=True, batch_size=1)
         for j, batch in enumerate(loader_test):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -115,21 +114,17 @@ class BevTraversability:
             loss_mean, loss_pred = self._loss(pred)
 
             # print(loss_train)
-            x = loss_pred.view(128, 128)
+            x = loss_pred.cpu().detach().numpy()
+            square_size = int(x.size ** 0.5)
+            x = x.reshape(square_size, square_size)
 
-            # Normalize the predictions
-            pred = (x - torch.min(x)) / (torch.max(x) - torch.min(x))
+            pred = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
 
             if save_pred:
-                # Save predictions as grayscale images
-                pred = pred.cpu().detach().numpy()
-                pred_out = pred * 255
-                # print(pred_out.reshape(-1))
-
-                cv2.imwrite(f"data/pred/{j}.jpg", pred_out)
+                cv2.imwrite(f"/home/rschmid/RosBags/bevnet/pred/{j}.jpg", pred)
 
                 if self._run_cfg.wandb_logging:
-                    wandb.log({"prediction": wandb.Image(pred_out)})
+                    wandb.log({"prediction": wandb.Image(pred)})
 
 
 if __name__ == "__main__":

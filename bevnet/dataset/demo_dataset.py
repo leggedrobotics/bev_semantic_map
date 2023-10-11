@@ -161,7 +161,7 @@ def get_bev_dataloader(return_test_dataloader=False, batch_size=1):
 
     if return_test_dataloader:
         dataset_test = DemoDataset(data_cfg)  # Create a new test dataset with random values
-        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=1, collate_fn=collate_fn)
+        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, collate_fn=collate_fn)
         return loader_train, loader_val, loader_test
 
     return loader_train, loader_val
