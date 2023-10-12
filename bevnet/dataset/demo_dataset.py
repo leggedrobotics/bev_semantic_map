@@ -76,11 +76,15 @@ class DemoDataset(torch.utils.data.Dataset):
         for idx_pointcloud in range(self.cfg_data.nr_lidar_points_time):  # Only one lidar point for now
             # points_in_base_frame = torch.rand((self.cfg_data.nr_points, 3))  # Random points, uniformly between 0
             # and 1
+            if idx + idx_pointcloud < len(self.pcd_paths):
+                idx = idx + idx_pointcloud
+
             points_in_base_frame = torch.load(self.pcd_paths[idx])
 
             # points_in_cam_frame = self.project_pc(points_in_base_frame, H_pc_cam)
 
             pcd_new["points"].append(points_in_base_frame)  # Add points in base frame
+
         return pcd_new
 
     def project_pc(self, pc, pose):

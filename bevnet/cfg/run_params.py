@@ -7,7 +7,7 @@ import torch
 class RunParams:
     wandb_logging: bool = False
     training_batch_size: int = 4
-    epochs: int = 5
+    epochs: int = 12
 
 
 data: RunParams = RunParams()
