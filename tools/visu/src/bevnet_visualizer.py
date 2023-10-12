@@ -9,7 +9,6 @@ from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 import std_msgs.msg
 from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2
-import dynamic_reconfigure.client
 import numpy as np
 import cv2
 import torch
@@ -176,44 +175,48 @@ if __name__ == "__main__":
 
     assert num_files > 0, "No files to go through!"
 
+    i = 0
+
     while not rospy.is_shutdown():
-        for i, _ in enumerate(range(num_files)):
+        # for i, _ in enumerate(range(num_files)):
 
-            if rospy.is_shutdown():
-                break
+        if rospy.is_shutdown():
+            break
 
-            if vis.show_mask:
-                mask_path = os.path.join(mask_dir, mask_files[i])
-                mask = torch.load(mask_path, map_location=torch.device("cpu")).cpu().numpy()
-                mask = mask[np.newaxis, ...].astype(np.uint8)
+        if vis.show_mask:
+            mask_path = os.path.join(mask_dir, mask_files[i])
+            mask = torch.load(mask_path, map_location=torch.device("cpu")).cpu().numpy()
+            mask = mask[np.newaxis, ...].astype(np.uint8)
 
-                vis.occupancy_map_arr(mask, RESOLUTION, x=0, y=0)
+            vis.occupancy_map_arr(mask, RESOLUTION, x=0, y=0)
 
-            if vis.show_pc:
-                pc_path = os.path.join(pc_dir, pc_files[i])
-                pc = torch.load(pc_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
+        if vis.show_pc:
+            pc_path = os.path.join(pc_dir, pc_files[i])
+            pc = torch.load(pc_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
 
-                vis.correct_z_direction(pc)
-                vis.point_cloud_process(pc, publish=True)
+            vis.correct_z_direction(pc)
+            vis.point_cloud_process(pc, publish=True)
 
-            if vis.show_pred:
-                pred_path = os.path.join(pred_dir, pred_files[i])
-                pred = cv2.imread(pred_path)
-                pred = cv2.cvtColor(pred, cv2.COLOR_BGR2GRAY)
-                pred = vis.preprocess_image(pred, LOWER_LIM, UPPER_LIM)
-                pred = pred.astype(bool)
-                pred = pred[np.newaxis, ...].astype(np.uint8)
+        if vis.show_pred:
+            pred_path = os.path.join(pred_dir, pred_files[i])
+            pred = cv2.imread(pred_path)
+            pred = cv2.cvtColor(pred, cv2.COLOR_BGR2GRAY)
+            pred = vis.preprocess_image(pred, LOWER_LIM, UPPER_LIM)
+            pred = pred.astype(bool)
+            pred = pred[np.newaxis, ...].astype(np.uint8)
 
-                vis.grid_map_arr(pred, RESOLUTION, LAYERS, x=0, y=0)
+            vis.grid_map_arr(pred, RESOLUTION, LAYERS, x=0, y=0)
 
-            if vis.show_frustrum and not frustrum_published:
-                frustrum = torch.load(frustrum_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
-                vis.frustrum_process(frustrum, publish=True)
-                # frustrum_published = True
+        if vis.show_frustrum and not frustrum_published:
+            frustrum = torch.load(frustrum_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
+            vis.frustrum_process(frustrum, publish=True)
+            # frustrum_published = True
 
-            print(i)
+        print(i)
 
-            LOWER_LIM = rospy.get_param("dynamic_params/LOWER_LIM")
-            UPPER_LIM = rospy.get_param("dynamic_params/UPPER_LIM")
+        LOWER_LIM = rospy.get_param("dynamic_params/LOWER_LIM")
+        UPPER_LIM = rospy.get_param("dynamic_params/UPPER_LIM")
+        IDX = rospy.get_param("dynamic_params/IDX")
 
-            rospy.sleep(0.2)
+        i = IDX
+        rospy.sleep(0.2)

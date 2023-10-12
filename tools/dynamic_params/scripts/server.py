@@ -10,6 +10,7 @@ def callback(config, level):
     rospy.loginfo("""Reconfigure Request: {LOWER_LIM} - {UPPER_LIM}""".format(**config))
     rospy.set_param("dynamic_params/LOWER_LIM", config.LOWER_LIM)
     rospy.set_param("dynamic_params/UPPER_LIM", config.UPPER_LIM)
+    rospy.set_param("dynamic_params/IDX", config.IDX)
     return config
 
 
