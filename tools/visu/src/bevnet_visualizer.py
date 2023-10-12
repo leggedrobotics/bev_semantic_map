@@ -212,11 +212,13 @@ if __name__ == "__main__":
             vis.frustrum_process(frustrum, publish=True)
             # frustrum_published = True
 
-        print(i)
-
         LOWER_LIM = rospy.get_param("dynamic_params/LOWER_LIM")
         UPPER_LIM = rospy.get_param("dynamic_params/UPPER_LIM")
         IDX = rospy.get_param("dynamic_params/IDX")
 
-        i = IDX
+        if IDX < num_files:
+            i = IDX
+        else:
+            IDX = i
+
         rospy.sleep(0.2)

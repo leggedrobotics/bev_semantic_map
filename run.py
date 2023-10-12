@@ -13,6 +13,7 @@ import numpy as np
 import torch
 import wandb
 import argparse
+from tqdm import tqdm
 
 from bevnet.cfg import ModelParams, RunParams
 from bevnet.network.bev_net import BevNet
@@ -44,39 +45,41 @@ class BevTraversability:
         self._model.train()
 
         loader_train, _ = get_bev_dataloader(batch_size=self._run_cfg.training_batch_size)
-        for j, batch in enumerate(loader_train):
-            imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
-            pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
-                pcd_new["points"].cuda(),
-                pcd_new["batch"].cuda(),
-                pcd_new["scan"].cuda(),
-            )
-            pred = self._model(
-                imgs.cuda(),
-                rots.cuda(),
-                trans.cuda(),
-                intrins.cuda(),
-                post_rots.cuda(),
-                post_trans.cuda(),
-                target.cuda().shape,
-                pcd_new,
-                target.cuda()
-            )
 
-            loss_mean, loss_pred = self._loss(pred)
+        for _ in tqdm(range(self._run_cfg.epochs)):
+            for j, batch in enumerate(loader_train):
+                imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
+                pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
+                    pcd_new["points"].cuda(),
+                    pcd_new["batch"].cuda(),
+                    pcd_new["scan"].cuda(),
+                )
+                pred = self._model(
+                    imgs.cuda(),
+                    rots.cuda(),
+                    trans.cuda(),
+                    intrins.cuda(),
+                    post_rots.cuda(),
+                    post_trans.cuda(),
+                    target.cuda().shape,
+                    pcd_new,
+                    target.cuda()
+                )
 
-            print(f"{j} | {loss_mean.item():.5f}")
+                loss_mean, loss_pred = self._loss(pred)
 
-            if self._run_cfg.wandb_logging:
-                wandb.log({"train_loss": loss_mean.item()})
+                print(f"{j} | {loss_mean.item():.5f}")
 
-            self._optimizer.zero_grad()
-            loss_mean.backward()
-            self._optimizer.step()
+                if self._run_cfg.wandb_logging:
+                    wandb.log({"train_loss": loss_mean.item()})
 
-        if save_model:
-            print("Saving model ...")
-            torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
+                self._optimizer.zero_grad()
+                loss_mean.backward()
+                self._optimizer.step()
+
+            if save_model:
+                print("Saving model ...")
+                torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
 
     def predict(self, load_model=True, model_name="bevnet", save_pred=False):
         if load_model:
