@@ -39,7 +39,8 @@ class BevTraversability:
             wandb.init(project="bevnet")
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
-        self._loss = AnomalyLoss()
+        # self._loss = AnomalyLoss()
+        self._loss = torch.nn.MSELoss()
 
     def train(self, save_model=False):
         self._model.train()
@@ -66,7 +67,8 @@ class BevTraversability:
                     target.cuda()
                 )
 
-                loss_mean, loss_pred = self._loss(pred)
+                # loss_mean, loss_pred = self._loss(pred)
+                loss_mean, loss_pred = self._loss(pred, target.cuda())
 
                 print(f"{j} | {loss_mean.item():.5f}")
 
@@ -114,7 +116,8 @@ class BevTraversability:
                         pcd_new,
                     )
 
-            loss_mean, loss_pred = self._loss(pred)
+            # loss_mean, loss_pred = self._loss(pred)
+            loss_mean, loss_pred = self._loss(pred, target.cuda())
 
             # print(loss_train)
             x = loss_pred.cpu().detach().numpy()

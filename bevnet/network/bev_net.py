@@ -52,6 +52,9 @@ class BevNet(torch.nn.Module):
                                                  flow_n=100, batch_norm=True,
                                                  mask_type='odds', conditioning_size=0,
                                                  use_permutation=True, single_function=True)
+        else:
+            self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1],
+                                                reconstruction=True)
         # else:
         #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
 
@@ -128,19 +131,20 @@ class BevNet(torch.nn.Module):
 
         features = torch.cat(features, dim=1)   # Simply stack features from different backbones
 
-        # Change feature dimension
-        features = features.permute(0, 2, 3, 1)     # (BS, C, H, W) -> (BS, H, W, C)
-        # features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
+        if self.cfg_model.fusion_net.anomaly:
+            # Change feature dimension
+            features = features.permute(0, 2, 3, 1)     # (BS, C, H, W) -> (BS, H, W, C)
+            # features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
 
-        features = features.view(-1, features.shape[1]*features.shape[2], features.shape[-1])    # (BS, H, W, C) -> (BS, H*W, C)
+            features = features.view(-1, features.shape[1]*features.shape[2], features.shape[-1])    # (BS, H, W, C) -> (BS, H*W, C)
 
-        # If target is available, mask out only positive samples
-        if target is not None:
-            # target = target.view(-1)
-            target = target.view(-1, target.shape[2] * target.shape[3])  # (BS, H, W, C) -> (BS, H*W)
-            features = features[target]
-        else:
-            features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C
+            # If target is available, mask out only positive samples
+            if target is not None:
+                # target = target.view(-1)
+                target = target.view(-1, target.shape[2] * target.shape[3])  # (BS, H, W, C) -> (BS, H*W)
+                features = features[target]
+            else:
+                features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C
 
         # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
         return self.fusion_net(features)  # Store the tensor in a contiguous chunk of memory for efficiency
