@@ -1,6 +1,7 @@
 from bevnet.network import voxelize_pcd_scans
 import torch
 from bevnet.cfg import ModelParams
+from icecream import ic
 
 from bevnet import network
 
@@ -97,12 +98,14 @@ class BevNet(torch.nn.Module):
         features = []
         if hasattr(self, "pointcloud_backbone"):
             try:
-                # print("pcd feat:", pcd_new["points"].shape, pcd_new["batch"], pcd_new["scan"])
+                # ic(pcd_new["points"].shape)
                 pcd_features = self.pointcloud_backbone(
                     x=pcd_new["points"], batch=pcd_new["batch"], scan=pcd_new["scan"]
                 )
+                # ic(pcd_features.shape)
                 # print("pcd feat:", pcd_features.shape)
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
+                # ic(pcd_features.shape)
                 # print("pcd feat:", pcd_features.shape)
                 features.append(pcd_features)
             except Exception as e:
@@ -123,7 +126,7 @@ class BevNet(torch.nn.Module):
             # print("image feat:", image_features.shape)
             features.append(image_features)
 
-        features = torch.cat(features, dim=1)
+        features = torch.cat(features, dim=1)   # Simply stack features from different backbones
 
         # Change feature dimension
         features = features.permute(0, 2, 3, 1)     # (BS, C, H, W) -> (BS, H, W, C)

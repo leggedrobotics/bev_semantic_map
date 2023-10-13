@@ -8,7 +8,7 @@ Panels:
         - /PointCloud21
         - /PointCloud23
       Splitter Ratio: 0.5
-    Tree Height: 987
+    Tree Height: 303
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -93,8 +93,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 1.111179232597351
-        Min Value: -0.2541539669036865
+        Max Value: 1.0649570226669312
+        Min Value: -0.12373882532119751
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -198,7 +198,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.625465393066406
+      Distance: 18.90020751953125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -206,17 +206,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.4914058446884155
-        Y: 0.5408373475074768
-        Z: -0.213998943567276
+        X: 2.305553436279297
+        Y: -0.9853089451789856
+        Z: 0.1903012990951538
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9447982311248779
+      Pitch: 0.959798276424408
       Target Frame: <Fixed Frame>
-      Yaw: 3.574207305908203
+      Yaw: 3.80737042427063
     Saved: ~
 Window Geometry:
   Displays:
