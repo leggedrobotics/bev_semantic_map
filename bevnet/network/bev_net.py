@@ -43,18 +43,21 @@ class BevNet(torch.nn.Module):
             fusion_net_input_channels += cfg.output_channels
 
         if cfg_model.fusion_net.multi_head:
+            print("Using MultiHeadBevEncode")
             self.fusion_net = network.MultiHeadBevEncode(
                 fusion_net_input_channels, cfg_model.fusion_net.output_channels
             )
-        if cfg_model.fusion_net.anomaly:
+        elif cfg_model.fusion_net.anomaly:
+            print("Using AnomalyBevEncode")
             # fusion_net_input_channels = 160
             self.fusion_net = network.LinearRNVP(input_dim=fusion_net_input_channels, coupling_topology=[200],
                                                  flow_n=100, batch_norm=True,
                                                  mask_type='odds', conditioning_size=0,
                                                  use_permutation=True, single_function=True)
         else:
+            print("Using SimpleMLP")
             self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1],
-                                                reconstruction=True)
+                                                reconstruction=False)
         # else:
         #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
 
@@ -130,6 +133,8 @@ class BevNet(torch.nn.Module):
             features.append(image_features)
 
         features = torch.cat(features, dim=1)   # Simply stack features from different backbones
+
+        # print("features shape:", features.shape)
 
         if self.cfg_model.fusion_net.anomaly:
             # Change feature dimension

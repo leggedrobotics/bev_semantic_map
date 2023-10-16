@@ -10,7 +10,7 @@ class ModelParams:
     @dataclass
     class FusionNetParams:
         output_channels: int = 1
-        multi_head: bool = False
+        multi_head: bool = True
         anomaly: bool = False
         apply_sigmoid: List[bool] = field(default_factory=lambda: [True])
         lr: float = 1e-4

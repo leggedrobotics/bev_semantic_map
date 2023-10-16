@@ -167,7 +167,7 @@ if __name__ == "__main__":
         if len(pred_files) > 0:
             num_files = len(pred_files)
         else:
-            vis.show_pred= False
+            vis.show_pred = False
 
     if vis.show_frustrum:
         frustrum_published = False

@@ -40,7 +40,7 @@ class BevTraversability:
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
         # self._loss = AnomalyLoss()
-        self._loss = torch.nn.MSELoss()
+        self._loss = torch.nn.functional.mse_loss
 
     def train(self, save_model=False):
         self._model.train()
@@ -67,8 +67,8 @@ class BevTraversability:
                     target.cuda()
                 )
 
-                # loss_mean, loss_pred = self._loss(pred)
-                loss_mean, loss_pred = self._loss(pred, target.cuda())
+                # loss_mean, loss_pred = self._loss(pred, target.cuda())
+                loss_mean = self._loss(pred, target.cuda().float())
 
                 print(f"{j} | {loss_mean.item():.5f}")
 
@@ -117,9 +117,10 @@ class BevTraversability:
                     )
 
             # loss_mean, loss_pred = self._loss(pred)
-            loss_mean, loss_pred = self._loss(pred, target.cuda())
+            # loss_mean, loss_pred = self._loss(pred, target.cuda())
 
             # print(loss_train)
+            loss_pred = pred
             x = loss_pred.cpu().detach().numpy()
             square_size = int(x.size ** 0.5)
             x = x.reshape(square_size, square_size)

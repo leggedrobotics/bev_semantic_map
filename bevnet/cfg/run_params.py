@@ -5,9 +5,9 @@ import torch
 
 @dataclass
 class RunParams:
-    wandb_logging: bool = False
-    training_batch_size: int = 4
-    epochs: int = 12
+    wandb_logging: bool = True
+    training_batch_size: int = 8
+    epochs: int = 2
 
 
 data: RunParams = RunParams()
