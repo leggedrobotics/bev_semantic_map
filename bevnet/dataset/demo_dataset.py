@@ -14,9 +14,9 @@ class DemoDataset(torch.utils.data.Dataset):
         super(DemoDataset, self).__init__()
         self.cfg_data = cfg_data
 
-        self.img_paths = sorted(glob.glob(f"{self.cfg_data.img_path}/*"))
-        self.pcd_paths = sorted(glob.glob(f"{self.cfg_data.pcd_path}/*"))
-        self.target_paths = sorted(glob.glob(f"{self.cfg_data.target_path}/*"))
+        self.img_paths = sorted(glob.glob(f"{os.path.join(self.cfg_data.data_dir, 'image')}/*"))
+        self.pcd_paths = sorted(glob.glob(f"{os.path.join(self.cfg_data.data_dir, 'pcd')}/*"))
+        self.target_paths = sorted(glob.glob(f"{os.path.join(self.cfg_data.data_dir, 'mask')}/*"))
 
     def __len__(self):
         # return self.cfg_data.nr_data
@@ -100,7 +100,7 @@ class DemoDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):  # Called when iterating over the dataset
         H_base_map = torch.eye(4)  # 4d tensor for tf from base to map frame, changing
-        grid_map_resolution = torch.tensor([self.cfg_data.gird_map_resolution])
+        grid_map_resolution = torch.tensor([self.cfg_data.grid_map_resolution])
 
         # target, aux = torch.zeros((1, 512, 512)), torch.zeros((1, 512, 512))    # Labels and aux labels in BEV space
         target, aux = (

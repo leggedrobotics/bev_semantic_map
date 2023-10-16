@@ -29,13 +29,15 @@ torch.set_printoptions(edgeitems=200)
 
 
 class BevTraversability:
-    def __init__(self):
+    def __init__(self, wandb_logging=False):
         self._model_cfg = ModelParams()
         self._model = BevNet(self._model_cfg)
         self._model.cuda()
 
+        self.wandb_logging = wandb_logging
+
         self._run_cfg = RunParams()
-        if self._run_cfg.wandb_logging:
+        if self.wandb_logging:
             wandb.init(project="bevnet")
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
@@ -72,7 +74,7 @@ class BevTraversability:
 
                 print(f"{j} | {loss_mean.item():.5f}")
 
-                if self._run_cfg.wandb_logging:
+                if self.wandb_logging:
                     wandb.log({"train_loss": loss_mean.item()})
 
                 self._optimizer.zero_grad()
@@ -117,7 +119,6 @@ class BevTraversability:
                     )
 
             # loss_mean, loss_pred = self._loss(pred)
-            # loss_mean, loss_pred = self._loss(pred, target.cuda())
 
             # print(loss_train)
             loss_pred = pred
@@ -130,7 +131,7 @@ class BevTraversability:
             if save_pred:
                 cv2.imwrite(f"/home/rschmid/RosBags/bevnet/pred/{j}.jpg", pred)
 
-                if self._run_cfg.wandb_logging:
+                if self.wandb_logging:
                     wandb.log({"prediction": wandb.Image(pred)})
 
 
@@ -143,9 +144,11 @@ if __name__ == "__main__":
                         help="""If set predicts""")
     parser.add_argument("--eval", action='store_true',
                         help="""If set evaluates""")
+    parser.add_argument("--log", action='store_true',
+                        help="""Logs data on wandb""")
     args = parser.parse_args()
 
-    bt = BevTraversability()
+    bt = BevTraversability(args.log)
 
     # Setting training mode
     if args.train:

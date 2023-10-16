@@ -46,11 +46,11 @@ class ModelParams:
     class PointPillarsParams:
         voxel_size: List[float] = field(default_factory=lambda: [0.1, 0.1, 1.0])  # [0.2, 0.2, 1.0]
         point_cloud_range: List[float] = field(
-            default_factory=lambda: [-3.2, -3.2, -10, 3.2, 3.2, 10]
+            default_factory=lambda: [-3.2, -3.2, -2.0, 3.2, 3.2, 2.0]
         )  # [-51.2, -51.2, -10, 51.2, 51.2, 10], [-12.8, -12.8, -10, 12.8, 12.8, 10]
         max_num_points: int = 32  # 32
         max_voxels: Tuple[float] = field(default_factory=lambda: (16000, 40000))  # (16000, 40000)
-        output_channels: int = 96  # 96
+        output_channels: int = 4  # 96
 
     fusion_net: FusionNetParams = FusionNetParams()
     lift_splat_shoot_net: LiftSplatShootNetParams = LiftSplatShootNetParams()

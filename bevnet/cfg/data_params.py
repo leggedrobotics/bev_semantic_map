@@ -12,9 +12,7 @@ class DataParams:
     img_width: int = 640    # 640, 128; 720
     img_height: int = 480   # 480, 128; 540
 
-    img_path: str = "/home/rschmid/RosBags/bevnet/image"    # Camera frame
-    pcd_path: str = "/home/rschmid/RosBags/bevnet/pcd"  # Base frame
-    target_path: str = "/home/rschmid/RosBags/bevnet/mask"  # Base frame
+    data_dir: str = "/home/rschmid/RosBags/bevnet"
 
     # trans_pc_cam = [0.025654243139211275, 0.0406744001863073, -0.004784660744370228]
     # rot_pc_cam = [0.0010163463332151373, 0.1270025471498098, 0.9918701104718138, 0.007937506549489694]
@@ -29,7 +27,7 @@ class DataParams:
     target_shape: Tuple[int, int, int] = (1, 64, 64)
     aux_shape: Tuple[int, int, int] = (1, 64, 64)
 
-    gird_map_resolution: float = 0.1
+    grid_map_resolution: float = 0.1
 
 
 data: DataParams = DataParams()

@@ -6,6 +6,7 @@ from icecream import ic
 from bevnet import network
 
 import torch.nn.functional as F
+import torchshow as ts
 
 # Global settings
 SAVE_PRED = True
@@ -57,7 +58,7 @@ class BevNet(torch.nn.Module):
         else:
             print("Using SimpleMLP")
             self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1],
-                                                reconstruction=False)
+                                                reconstruction=True)
         # else:
         #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
 
@@ -83,7 +84,7 @@ class BevNet(torch.nn.Module):
             --------------
             pcd_new format explained:  "scan"=[500,302,400,501] ; "batch"=[802,901] indicates the first scan
              is from point 0-500 second scan 500-802 ...
-            same goes for the batches 0-802 is batch 0 therefore the first to scans
+            same goes for the batches 0-802 is batch 0 therefore the first two scans
             belong to batch=0 and points 802-1703 to second batch.
 
         Returns:
@@ -104,14 +105,18 @@ class BevNet(torch.nn.Module):
         features = []
         if hasattr(self, "pointcloud_backbone"):
             try:
-                # ic(pcd_new["points"].shape)
+                # ic(pcd_new["points"])
+                # ic(pcd_new["batch"])
+                # ic(pcd_new["scan"])
                 pcd_features = self.pointcloud_backbone(
                     x=pcd_new["points"], batch=pcd_new["batch"], scan=pcd_new["scan"]
                 )
-                # ic(pcd_features.shape)
+                # plt.imshow(pcd_features[0].cpu().detach().numpy(), cmap='gray')  # Use 'gray' for grayscale images
+                # plt.show()
+
                 # print("pcd feat:", pcd_features.shape)
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
-                # ic(pcd_features.shape)
+                pcd_features = pcd_features[:, :4, :, :]
                 # print("pcd feat:", pcd_features.shape)
                 features.append(pcd_features)
             except Exception as e:
@@ -129,6 +134,7 @@ class BevNet(torch.nn.Module):
             image_features = self.image_backbone(
                 imgs, rots, trans, intrins, post_rots, post_trans, pcd_new=pcd_new, camera_info=camera_info
             )
+            # ts.show(image_features[0])
             # print("image feat:", image_features.shape)
             features.append(image_features)
 
