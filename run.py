@@ -74,7 +74,7 @@ class BevTraversability:
 
                 # Compute loss
                 # loss_mean, loss_pred = self._loss(pred, target.cuda())
-                loss_mean = self._loss(pred, target.cuda().float())
+                loss_mean = self._loss(pred, target.cuda().float().reshape(-1, 1))
 
                 print(f"{j} | {loss_mean.item():.5f}")
 
@@ -95,12 +95,12 @@ class BevTraversability:
             self._model.to(DEVICE)
             try:
                 self._model.load_state_dict(
-                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)), strict=False)
+                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)), strict=True)
             except:
                 ValueError("This model configuration does not exist!")
 
             # Set the model to evaluation mode
-            # self._model.eval()    # TODO: turning this on causes different output with big values
+            self._model.eval()    # TODO: turning this on causes different output with big values
 
         data_loader = get_bev_dataloader(mode="test", batch_size=1)
         for j, batch in enumerate(data_loader):
@@ -144,15 +144,15 @@ class BevTraversability:
 if __name__ == "__main__":
     # Passing arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--t", action='store_true',
+    parser.add_argument("-t", action='store_true',
                         help="""If set trains""")
-    parser.add_argument("--p", action='store_true',
+    parser.add_argument("-p", action='store_true',
                         help="""If set predicts""")
-    parser.add_argument("--log", action='store_true',
+    parser.add_argument("-l", action='store_true',
                         help="""Logs data on wandb""")
     args = parser.parse_args()
 
-    bt = BevTraversability(args.log)
+    bt = BevTraversability(args.l)
 
     # Setting training mode
     if args.t:
@@ -160,4 +160,4 @@ if __name__ == "__main__":
     elif args.p:
         bt.predict(load_model=True, save_pred=True)
     else:
-        raise ValueError(f"Unknown mode")
+        raise ValueError(f"Unknown mode, please specify -t (for train), -p (for test), -l (if wandb logging)")

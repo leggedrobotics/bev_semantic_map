@@ -5,8 +5,8 @@ import torch
 
 @dataclass
 class RunParams:
-    training_batch_size: int = 4
-    epochs: int = 2
+    training_batch_size: int = 2
+    epochs: int = 4
 
 
 data: RunParams = RunParams()

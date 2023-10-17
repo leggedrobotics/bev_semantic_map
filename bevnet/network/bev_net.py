@@ -57,8 +57,8 @@ class BevNet(torch.nn.Module):
                                                  use_permutation=True, single_function=True)
         else:
             print("Using SimpleMLP")
-            self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[64, 16],
-                                                reconstruction=True)
+            self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1],
+                                                reconstruction=False)
         # else:
         #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
 
@@ -105,19 +105,12 @@ class BevNet(torch.nn.Module):
         features = []
         if hasattr(self, "pointcloud_backbone"):
             try:
-                # ic(pcd_new["points"])
-                # ic(pcd_new["batch"])
-                # ic(pcd_new["scan"])
                 pcd_features = self.pointcloud_backbone(
                     x=pcd_new["points"], batch=pcd_new["batch"], scan=pcd_new["scan"]
                 )
-                # plt.imshow(pcd_features[0].cpu().detach().numpy(), cmap='gray')  # Use 'gray' for grayscale images
-                # plt.show()
-
-                # print("pcd feat:", pcd_features.shape)
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
-                # pcd_features = pcd_features[:, :10, :, :]
-                # print("pcd feat:", pcd_features.shape)
+                # pcd_features = pcd_features[:, :64, :, :]
+                # ts.show(pcd_features[0, :25, :, :])
                 features.append(pcd_features)
             except Exception as e:
                 raise ValueError("Pointcloud backbone failed")
@@ -157,7 +150,12 @@ class BevNet(torch.nn.Module):
             else:
                 features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C
 
-        # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for efficiency
+        # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for
+        # efficiency
+
+        # print(features.shape)
+        features = features.reshape(-1, features.shape[1])
+        # print(features.shape)
         return self.fusion_net(features)  # Store the tensor in a contiguous chunk of memory for efficiency
 
 
