@@ -11,6 +11,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .ops import Voxelization
 
+from icecream import ic
+
 
 class PillarLayer(nn.Module):
     # TODO check lincense: https://github.com/zhulf0804/PointPillars/blob/main/model/pointpillars.py
@@ -105,8 +107,11 @@ class PillarEncoder(nn.Module):
 
         # 5. embedding
         features = features.permute(0, 2, 1).contiguous()  # (p1 + p2 + ... + pb, 9, num_points)
+        # ic(features.shape)
         features = F.relu(self.bn(self.conv(features)))  # (p1 + p2 + ... + pb, out_channels, num_points)
-        pooling_features = torch.max(features, dim=-1)[0]  # (p1 + p2 + ... + pb, out_channels)
+        # ic(features.shape)
+        pooling_features = torch.max(features, dim=-1)[0]  # (p1 + p2 + ... + pb, out_channels), out_channels = 64
+        # ic(pooling_features.shape)
 
         # 6. pillar scatter
         batched_canvas = []

@@ -153,25 +153,17 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
     return tuple(output_batch)
 
 
-def get_bev_dataloader(return_test_dataloader=False, batch_size=1):
+def get_bev_dataloader(mode="train", batch_size=1):
 
-    data_cfg = DataParams()
+    data_cfg = DataParams(mode=mode)
+    print(data_cfg.data_dir)
+    dataset = DemoDataset(data_cfg)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
 
-    dataset_train = DemoDataset(data_cfg)
-    dataset_val = DemoDataset(data_cfg)
-
-    loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, collate_fn=collate_fn)
-    loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, collate_fn=collate_fn)
-
-    if return_test_dataloader:
-        dataset_test = DemoDataset(data_cfg)  # Create a new test dataset with random values
-        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, collate_fn=collate_fn)
-        return loader_train, loader_val, loader_test
-
-    return loader_train, loader_val
+    return data_loader
 
 
 if __name__ == "__main__":
-    loader_train, loader_val, loader_test = get_bev_dataloader()
-    for j, batch in enumerate(loader_train):
+    data_loader = get_bev_dataloader()
+    for j, batch in enumerate(data_loader):
         print(j)

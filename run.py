@@ -47,10 +47,10 @@ class BevTraversability:
     def train(self, save_model=False):
         self._model.train()
 
-        loader_train, _ = get_bev_dataloader(batch_size=self._run_cfg.training_batch_size)
+        data_loader = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
 
         for _ in tqdm(range(self._run_cfg.epochs)):
-            for j, batch in enumerate(loader_train):
+            for j, batch in enumerate(data_loader):
                 imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
                 pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
                     pcd_new["points"].cuda(),
@@ -97,8 +97,8 @@ class BevTraversability:
             # Set the model to evaluation mode
             # self._model.eval()    # TODO: turning this on causes different output with big values
 
-        _, _, loader_test = get_bev_dataloader(return_test_dataloader=True, batch_size=1)
-        for j, batch in enumerate(loader_test):
+        data_loader = get_bev_dataloader(mode="test", batch_size=1)
+        for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
                 pcd_new["points"].cuda(),

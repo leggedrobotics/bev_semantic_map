@@ -57,7 +57,7 @@ class BevNet(torch.nn.Module):
                                                  use_permutation=True, single_function=True)
         else:
             print("Using SimpleMLP")
-            self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1],
+            self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[64, 16],
                                                 reconstruction=True)
         # else:
         #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
@@ -116,7 +116,7 @@ class BevNet(torch.nn.Module):
 
                 # print("pcd feat:", pcd_features.shape)
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
-                pcd_features = pcd_features[:, :4, :, :]
+                # pcd_features = pcd_features[:, :10, :, :]
                 # print("pcd feat:", pcd_features.shape)
                 features.append(pcd_features)
             except Exception as e:
@@ -166,6 +166,3 @@ if __name__ == "__main__":
     model_cfg = ModelParams()
     model = BevNet(model_cfg)
     model.cuda()
-
-    # model.predict(save_pred=True)
-    # model.train(save_model=True)
