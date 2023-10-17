@@ -1,5 +1,6 @@
 import torch
 from PIL import Image
+import cv2
 import numpy as np
 import os
 import glob
@@ -14,9 +15,9 @@ class DemoDataset(torch.utils.data.Dataset):
         super(DemoDataset, self).__init__()
         self.cfg_data = cfg_data
 
-        self.img_paths = sorted(glob.glob(f"{os.path.join(self.cfg_data.data_dir, 'image')}/*"))
-        self.pcd_paths = sorted(glob.glob(f"{os.path.join(self.cfg_data.data_dir, 'pcd')}/*"))
-        self.target_paths = sorted(glob.glob(f"{os.path.join(self.cfg_data.data_dir, 'mask')}/*"))
+        self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, 'image', '*')))
+        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, 'pcd', '*')))
+        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, 'target', '*')))
 
     def __len__(self):
         # return self.cfg_data.nr_data
@@ -98,6 +99,12 @@ class DemoDataset(torch.utils.data.Dataset):
             points_list.append(tuple(p))
         return torch.tensor(points_list, dtype=torch.float32)
 
+    def get_dummy_target(self):
+        target = torch.zeros(self.cfg_data.target_shape)
+        # Fill left half with ones
+        target[:, : int(self.cfg_data.target_shape[1] / 2), :] = 1
+        return target
+
     def __getitem__(self, idx):  # Called when iterating over the dataset
         H_base_map = torch.eye(4)  # 4d tensor for tf from base to map frame, changing
         grid_map_resolution = torch.tensor([self.cfg_data.grid_map_resolution])
@@ -107,7 +114,16 @@ class DemoDataset(torch.utils.data.Dataset):
             torch.zeros(self.cfg_data.target_shape),
             torch.zeros(self.cfg_data.aux_shape),
         )  # Labels and aux labels in BEV space
-        target = torch.load(self.target_paths[idx]).unsqueeze(0)
+        # target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)
+
+        # Get dummy image
+        target = self.get_dummy_target()
+
+        # Save target image
+        target_out = target.permute(1, 2, 0).cpu().numpy()
+        target_out = (target_out * 255).astype(np.uint8)
+        cv2.imwrite(f"/home/rschmid/RosBags/bevnet/dummy/{idx}.jpg", target_out)
+
         imgs, rots, trans, intrins, post_rots, post_trans, img_plots = self.get_image_data(idx)
         pcd_new = self.get_raw_pcd_data(idx)
 
@@ -156,7 +172,6 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
 def get_bev_dataloader(mode="train", batch_size=1):
 
     data_cfg = DataParams(mode=mode)
-    print(data_cfg.data_dir)
     dataset = DemoDataset(data_cfg)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
 

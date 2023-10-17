@@ -14,6 +14,7 @@ import torch
 import wandb
 import argparse
 from tqdm import tqdm
+from icecream import ic
 
 from bevnet.cfg import ModelParams, RunParams
 from bevnet.network.bev_net import BevNet
@@ -57,6 +58,8 @@ class BevTraversability:
                     pcd_new["batch"].cuda(),
                     pcd_new["scan"].cuda(),
                 )
+
+                # Forward pass
                 pred = self._model(
                     imgs.cuda(),
                     rots.cuda(),
@@ -69,6 +72,7 @@ class BevTraversability:
                     target.cuda()
                 )
 
+                # Compute loss
                 # loss_mean, loss_pred = self._loss(pred, target.cuda())
                 loss_mean = self._loss(pred, target.cuda().float())
 
@@ -77,6 +81,7 @@ class BevTraversability:
                 if self.wandb_logging:
                     wandb.log({"train_loss": loss_mean.item()})
 
+                # Backward pass
                 self._optimizer.zero_grad()
                 loss_mean.backward()
                 self._optimizer.step()
@@ -107,6 +112,7 @@ class BevTraversability:
             )
             with Timer(f"Inference {j}"):
                 with torch.no_grad():
+                    # Forward pass
                     pred = self._model(
                         imgs.cuda(),
                         rots.cuda(),
@@ -121,12 +127,12 @@ class BevTraversability:
             # loss_mean, loss_pred = self._loss(pred)
 
             # print(loss_train)
-            loss_pred = pred
-            x = loss_pred.cpu().detach().numpy()
+            x = pred.cpu().detach().numpy()
             square_size = int(x.size ** 0.5)
             x = x.reshape(square_size, square_size)
-
             pred = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
+
+            # ic(pred)
 
             if save_pred:
                 cv2.imwrite(f"/home/rschmid/RosBags/bevnet/pred/{j}.jpg", pred)
@@ -138,12 +144,10 @@ class BevTraversability:
 if __name__ == "__main__":
     # Passing arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train", action='store_true',
+    parser.add_argument("--t", action='store_true',
                         help="""If set trains""")
-    parser.add_argument("--pred", action='store_true',
+    parser.add_argument("--p", action='store_true',
                         help="""If set predicts""")
-    parser.add_argument("--eval", action='store_true',
-                        help="""If set evaluates""")
     parser.add_argument("--log", action='store_true',
                         help="""Logs data on wandb""")
     args = parser.parse_args()
@@ -151,9 +155,9 @@ if __name__ == "__main__":
     bt = BevTraversability(args.log)
 
     # Setting training mode
-    if args.train:
+    if args.t:
         bt.train(save_model=True)
-    elif args.pred:
+    elif args.p:
         bt.predict(load_model=True, save_pred=True)
     else:
         raise ValueError(f"Unknown mode")
