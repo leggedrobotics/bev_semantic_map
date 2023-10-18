@@ -105,12 +105,15 @@ class BevNet(torch.nn.Module):
         features = []
         if hasattr(self, "pointcloud_backbone"):
             try:
+                # Change x, y, z to y, x, z
+                pcd_new["points"] = pcd_new["points"][:, [1, 0, 2]]
+
                 pcd_features = self.pointcloud_backbone(
                     x=pcd_new["points"], batch=pcd_new["batch"], scan=pcd_new["scan"]
                 )
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
                 # pcd_features = pcd_features[:, :64, :, :]
-                # ts.show(pcd_features[0, :25, :, :])
+                # ts.show(pcd_features[0, :, :, :])
                 features.append(pcd_features)
             except Exception as e:
                 raise ValueError("Pointcloud backbone failed")
@@ -127,8 +130,9 @@ class BevNet(torch.nn.Module):
             image_features = self.image_backbone(
                 imgs, rots, trans, intrins, post_rots, post_trans, pcd_new=pcd_new, camera_info=camera_info
             )
-            # ts.show(image_features[0])
-            # print("image feat:", image_features.shape)
+            # flip x to minus x and y to minus y
+            image_features = torch.flip(image_features, dims=(2, 3))
+            ts.show(image_features[0])
             features.append(image_features)
 
         features = torch.cat(features, dim=1)   # Simply stack features from different backbones

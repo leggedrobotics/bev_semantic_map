@@ -120,9 +120,9 @@ class DemoDataset(torch.utils.data.Dataset):
         target = self.get_dummy_target()
 
         # Save target image
-        target_out = target.permute(1, 2, 0).cpu().numpy()
-        target_out = (target_out * 255).astype(np.uint8)
-        cv2.imwrite(f"/home/rschmid/RosBags/bevnet/dummy/{idx}.jpg", target_out)
+        # target_out = target.permute(1, 2, 0).cpu().numpy()
+        # target_out = (target_out * 255).astype(np.uint8)
+        # cv2.imwrite(f"/home/rschmid/RosBags/bevnet/dummy/{idx}.jpg", target_out)
 
         imgs, rots, trans, intrins, post_rots, post_trans, img_plots = self.get_image_data(idx)
         pcd_new = self.get_raw_pcd_data(idx)

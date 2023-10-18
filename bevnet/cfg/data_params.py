@@ -23,8 +23,11 @@ class DataParams:
 
     # intrin = [287.8025, 0.0000, 372.8656, 0.0000, 289.2824, 259.7603, 0.0000, 0.0000, 1.0000]   # 720 x 540
     intrin = [255.8245, 0.0000, 331.4361, 0.0000, 257.1399, 230.8981, 0.0000, 0.0000, 1.0000]   # 640 x 480
-    trans_base_cam = [0.40449, 0.0, 0.0205]
-    rot_base_cam = [0.5, -0.4999999999999999, 0.5, -0.5000000000000001]
+    # trans_base_cam = [0.40449, 0.0, 0.0205] # parent
+    # rot_base_cam = [0.5, -0.4999999999999999, 0.5, -0.5000000000000001] # parent
+
+    trans_base_cam = [-1.1102230246251565e-16, 0.020499999999999907, -0.40449]
+    rot_base_cam = [-0.5, 0.4999999999999999, -0.5, -0.5000000000000001]
 
     nr_points: int = 5000
 
@@ -34,7 +37,7 @@ class DataParams:
     grid_map_resolution: float = 0.1
 
     def __post_init__(self):
-        self.data_dir = os.path.join("/home/rschmid/RosBags/bevnet", self.mode)
+        self.data_dir = os.path.join("/home/rschmid/RosBags/output", self.mode)
 
 
 data: DataParams = DataParams()

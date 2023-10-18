@@ -2,9 +2,9 @@
 <!--  set args -->
   <param name="show_mask" value="true" />
   <param name="show_pc" value="true" />
-  <param name="show_pred" value="true" />
-  <param name="show_frustrum" value="true" />
-  <param name="data_dir" value="/home/rschmid/RosBags/bevnet" />
+  <param name="show_pred" value="false" />
+  <param name="show_frustrum" value="false" />
+  <param name="data_dir" value="/home/rschmid/RosBags/output" />
 
   <!-- Launch rqt_reconfigure using rosrun -->
 <!--  <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" output="screen" />-->
