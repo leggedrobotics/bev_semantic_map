@@ -7,7 +7,7 @@ Author: Robin Schmid
 Date: Sep 2023
 """
 
-
+import os
 import cv2
 import numpy as np
 import torch
@@ -16,7 +16,7 @@ import argparse
 from tqdm import tqdm
 from icecream import ic
 
-from bevnet.cfg import ModelParams, RunParams
+from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
 from bevnet.network.loss import AnomalyLoss
 from bevnet.dataset import get_bev_dataloader
@@ -38,6 +38,7 @@ class BevTraversability:
         self.wandb_logging = wandb_logging
 
         self._run_cfg = RunParams()
+        self._data_cfg = DataParams()
         if self.wandb_logging:
             wandb.init(project="bevnet")
 
@@ -132,10 +133,9 @@ class BevTraversability:
             x = x.reshape(square_size, square_size)
             pred = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
 
-            # ic(pred)
-
             if save_pred:
-                cv2.imwrite(f"/home/rschmid/RosBags/bevnet/pred/{j}.jpg", pred)
+
+                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0], "pred", f"{j}.jpg"), pred)
 
                 if self.wandb_logging:
                     wandb.log({"prediction": wandb.Image(pred)})
