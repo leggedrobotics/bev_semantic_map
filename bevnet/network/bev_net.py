@@ -48,20 +48,20 @@ class BevNet(torch.nn.Module):
             self.fusion_net = network.MultiHeadBevEncode(
                 fusion_net_input_channels, cfg_model.fusion_net.output_channels
             )
-        elif cfg_model.fusion_net.anomaly:
+        if cfg_model.fusion_net.anomaly:
             print("Using AnomalyBevEncode")
             # fusion_net_input_channels = 160
             self.fusion_net = network.LinearRNVP(
                 input_dim=fusion_net_input_channels,
                 coupling_topology=[200],
-                flow_n=100,
-                batch_norm=True,
+                flow_n=20,
+                batch_norm=False,
                 mask_type="odds",
                 conditioning_size=0,
                 use_permutation=True,
                 single_function=True,
             )
-        else:
+        if cfg_model.fusion_net.simple_mlp:
             print("Using SimpleMLP")
             self.fusion_net = network.SimpleMLP(
                 input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1], reconstruction=False
@@ -144,7 +144,6 @@ class BevNet(torch.nn.Module):
         features = torch.cat(features, dim=1)  # Simply stack features from different backbones
 
         # ts.show(features[0, :25, :, :])
-
         # print("features shape:", features.shape)
 
         if self.cfg_model.fusion_net.anomaly:
@@ -162,13 +161,13 @@ class BevNet(torch.nn.Module):
                 target = target.view(-1, target.shape[2] * target.shape[3])  # (BS, H, W, C) -> (BS, H*W)
                 features = features[target]
             else:
-                features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C
+                features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C)
 
         # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for
         # efficiency
 
         # print(features.shape)
-        features = features.reshape(-1, features.shape[1])
+        # features = features.reshape(-1, features.shape[1])    # Only need this for 1d linear MLP
         # print(features.shape)
         return self.fusion_net(features)  # Store the tensor in a contiguous chunk of memory for efficiency
 

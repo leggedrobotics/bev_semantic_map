@@ -28,6 +28,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
+LOGGING_NAME = "bevnet3"
+
 
 class BevTraversability:
     def __init__(self, wandb_logging=False):
@@ -40,11 +42,11 @@ class BevTraversability:
         self._run_cfg = RunParams()
         self._data_cfg = DataParams()
         if self.wandb_logging:
-            wandb.init(project="bevnet")
+            wandb.init(project=LOGGING_NAME)
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
-        # self._loss = AnomalyLoss()
-        self._loss = torch.nn.functional.mse_loss
+        self._loss = AnomalyLoss()
+        # self._loss = torch.nn.functional.mse_loss
 
     def train(self, save_model=False):
         self._model.train()
@@ -74,8 +76,9 @@ class BevTraversability:
                 )
 
                 # Compute loss
-                # loss_mean, loss_pred = self._loss(pred, target.cuda())
-                loss_mean = self._loss(pred, target.cuda().float().reshape(-1, 1))
+                loss_mean, loss_pred = self._loss(pred)
+                # loss_mean = self._loss(pred, target.cuda().float())   # Use this for BEV MLP
+                # loss_mean = self._loss(pred, target.cuda().float().reshape(-1, 1))  # Use this for linear MLP
 
                 print(f"{j} | {loss_mean.item():.5f}")
 
@@ -126,16 +129,20 @@ class BevTraversability:
                         pcd_new,
                     )
 
-            # loss_mean, loss_pred = self._loss(pred)
+            loss_mean, loss_pred = self._loss(pred)
+
+            pred = loss_pred
+
+            # print(loss_pred)
 
             # print(loss_train)
             x = pred.cpu().detach().numpy()
             square_size = int(x.size ** 0.5)
             x = x.reshape(square_size, square_size)
             pred = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
+            # pred = x
 
             if save_pred:
-
                 cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0], "pred", f"{j}.jpg"), pred)
 
                 if self.wandb_logging:

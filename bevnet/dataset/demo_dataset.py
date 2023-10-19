@@ -17,7 +17,7 @@ class DemoDataset(torch.utils.data.Dataset):
 
         self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
         self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd", "*")))
-        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "target", "*")))
+        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "mask", "*")))
 
     def __len__(self):
         # return self.cfg_data.nr_data
@@ -114,12 +114,12 @@ class DemoDataset(torch.utils.data.Dataset):
             torch.zeros(self.cfg_data.target_shape),
             torch.zeros(self.cfg_data.aux_shape),
         )  # Labels and aux labels in BEV space
-        # target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)
+        target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)
 
         # Get dummy image
-        target = self.get_dummy_target()
+        # target = self.get_dummy_target()
 
-        # Save target image
+        # Save target image for debugging
         # target_out = target.permute(1, 2, 0).cpu().numpy()
         # target_out = (target_out * 255).astype(np.uint8)
         # cv2.imwrite(f"/home/rschmid/RosBags/bevnet/dummy/{idx}.jpg", target_out)
