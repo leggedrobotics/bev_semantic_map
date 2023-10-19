@@ -51,14 +51,21 @@ class BevNet(torch.nn.Module):
         elif cfg_model.fusion_net.anomaly:
             print("Using AnomalyBevEncode")
             # fusion_net_input_channels = 160
-            self.fusion_net = network.LinearRNVP(input_dim=fusion_net_input_channels, coupling_topology=[200],
-                                                 flow_n=100, batch_norm=True,
-                                                 mask_type='odds', conditioning_size=0,
-                                                 use_permutation=True, single_function=True)
+            self.fusion_net = network.LinearRNVP(
+                input_dim=fusion_net_input_channels,
+                coupling_topology=[200],
+                flow_n=100,
+                batch_norm=True,
+                mask_type="odds",
+                conditioning_size=0,
+                use_permutation=True,
+                single_function=True,
+            )
         else:
             print("Using SimpleMLP")
-            self.fusion_net = network.SimpleMLP(input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1],
-                                                reconstruction=False)
+            self.fusion_net = network.SimpleMLP(
+                input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1], reconstruction=False
+            )
         # else:
         #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
 
@@ -134,7 +141,7 @@ class BevNet(torch.nn.Module):
             # ts.show(image_features[0, :25, :, :])
             features.append(image_features)
 
-        features = torch.cat(features, dim=1)   # Simply stack features from different backbones
+        features = torch.cat(features, dim=1)  # Simply stack features from different backbones
 
         # ts.show(features[0, :25, :, :])
 
@@ -142,10 +149,12 @@ class BevNet(torch.nn.Module):
 
         if self.cfg_model.fusion_net.anomaly:
             # Change feature dimension
-            features = features.permute(0, 2, 3, 1)     # (BS, C, H, W) -> (BS, H, W, C)
+            features = features.permute(0, 2, 3, 1)  # (BS, C, H, W) -> (BS, H, W, C)
             # features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
 
-            features = features.view(-1, features.shape[1]*features.shape[2], features.shape[-1])    # (BS, H, W, C) -> (BS, H*W, C)
+            features = features.view(
+                -1, features.shape[1] * features.shape[2], features.shape[-1]
+            )  # (BS, H, W, C) -> (BS, H*W, C)
 
             # If target is available, mask out only positive samples
             if target is not None:

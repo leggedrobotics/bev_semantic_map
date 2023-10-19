@@ -70,7 +70,7 @@ class BevTraversability:
                     post_trans.cuda(),
                     target.cuda().shape,
                     pcd_new,
-                    target.cuda()
+                    target.cuda(),
                 )
 
                 # Compute loss
@@ -96,12 +96,13 @@ class BevTraversability:
             self._model.to(DEVICE)
             try:
                 self._model.load_state_dict(
-                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)), strict=True)
+                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)), strict=True
+                )
             except:
                 ValueError("This model configuration does not exist!")
 
             # Set the model to evaluation mode
-            self._model.eval()    # TODO: turning this on causes different output with big values
+            self._model.eval()  # TODO: turning this on causes different output with big values
 
         data_loader = get_bev_dataloader(mode="test", batch_size=1)
         for j, batch in enumerate(data_loader):
@@ -144,12 +145,9 @@ class BevTraversability:
 if __name__ == "__main__":
     # Passing arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", action='store_true',
-                        help="""If set trains""")
-    parser.add_argument("-p", action='store_true',
-                        help="""If set predicts""")
-    parser.add_argument("-l", action='store_true',
-                        help="""Logs data on wandb""")
+    parser.add_argument("-t", action="store_true", help="""If set trains""")
+    parser.add_argument("-p", action="store_true", help="""If set predicts""")
+    parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
     args = parser.parse_args()
 
     bt = BevTraversability(args.l)

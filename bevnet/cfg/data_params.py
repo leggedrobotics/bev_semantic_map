@@ -13,8 +13,8 @@ class DataParams:
     nr_lidar_points_time: int = 1
     nr_data: int = 100
 
-    img_width: int = 640    # 640, 128; 720
-    img_height: int = 480   # 480, 128; 540
+    img_width: int = 640  # 640, 128; 720
+    img_height: int = 480  # 480, 128; 540
 
     # data_dir: str = os.path.join("/home/rschmid/RosBags/bevnet", mode)
 
@@ -22,7 +22,7 @@ class DataParams:
     # rot_pc_cam = [0.0010163463332151373, 0.1270025471498098, 0.9918701104718138, 0.007937506549489694]
 
     # intrin = [287.8025, 0.0000, 372.8656, 0.0000, 289.2824, 259.7603, 0.0000, 0.0000, 1.0000]   # 720 x 540
-    intrin = [255.8245, 0.0000, 331.4361, 0.0000, 257.1399, 230.8981, 0.0000, 0.0000, 1.0000]   # 640 x 480
+    intrin = [255.8245, 0.0000, 331.4361, 0.0000, 257.1399, 230.8981, 0.0000, 0.0000, 1.0000]  # 640 x 480
     # trans_base_cam = [0.40449, 0.0, 0.0205] # parent
     # rot_base_cam = [0.5, -0.4999999999999999, 0.5, -0.5000000000000001] # parent
 
@@ -37,7 +37,7 @@ class DataParams:
     grid_map_resolution: float = 0.1
 
     def __post_init__(self):
-        self.data_dir = os.path.join("/home/rschmid/RosBags/output", self.mode)
+        self.data_dir = os.path.join("/home/rschmid/RosBags/bevnet", self.mode)
 
 
 data: DataParams = DataParams()

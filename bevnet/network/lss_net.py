@@ -188,7 +188,7 @@ class LiftSplatShootNet(nn.Module):
         ys = torch.linspace(0, ogfH - 1, fH, dtype=torch.float).view(1, fH, 1).expand(D, fH, fW)
 
         # D x H x W x 3
-        frustum = torch.stack((xs, ys, ds), -1)     # Frustrum in image plane
+        frustum = torch.stack((xs, ys, ds), -1)  # Frustrum in image plane
 
         return nn.Parameter(frustum, requires_grad=False)
 

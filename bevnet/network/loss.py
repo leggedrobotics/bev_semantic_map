@@ -13,10 +13,7 @@ class AnomalyLoss(torch.nn.Module):
         #     anomaly_detection=True,
         # )
 
-    def forward(
-        self,
-        res: dict
-    ):
+    def forward(self, res: dict):
         losses = res["logprob"].sum(1) + res["log_det"]  # Sum over all channels, resulting in h*w output dimensions
 
         # if update_generator:
