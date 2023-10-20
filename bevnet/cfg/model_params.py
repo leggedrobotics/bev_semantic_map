@@ -9,12 +9,29 @@ class ModelParams:
 
     @dataclass
     class FusionNetParams:
+        pass
+
+    @dataclass
+    class CNNParams:
         output_channels: int = 1
-        multi_head: bool = False
-        anomaly: bool = True
-        simple_mlp: bool = False
         apply_sigmoid: List[bool] = field(default_factory=lambda: [True])
-        lr: float = 1e-4
+
+    @dataclass
+    class RealNVPParams:
+        coupling_topology: List[int] = field(default_factory=lambda: [200])
+        flow_n: int = 20
+        batch_norm: bool = True
+        mask_type: str = "odds"    # "odds", "even"
+        conditioning_size: int = 0
+        use_permutation: bool = True
+        single_function: bool = True
+
+    @dataclass
+    class MLPParams:
+        hidden_sizes: List[int] = field(
+            default_factory=lambda: [256, 32, 1]
+        )
+        reconstruction: bool = False
 
     @dataclass
     class LiftSplatShootNetParams:
@@ -22,10 +39,10 @@ class ModelParams:
         class GridParams:
             xbound: List[float] = field(
                 default_factory=lambda: [-3.2, 3.2, 0.1]
-            )  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
+            )  # [-51.2, 51.2, 0.2]
             ybound: List[float] = field(
                 default_factory=lambda: [-3.2, 3.2, 0.1]
-            )  # [-51.2, 51.2, 0.2], [-12.8, 12.8, 0.1]
+            )  # [-51.2, 51.2, 0.2]
             zbound: List[float] = field(default_factory=lambda: [-5.0, 5.0, 10.0])  # [-20.0, 20.0, 40.0]
             dbound: List[float] = field(default_factory=lambda: [1.0, 3.2, 0.05])  # [4.0, 50.0, 0.2]
 
@@ -52,18 +69,29 @@ class ModelParams:
         voxel_size: List[float] = field(default_factory=lambda: [0.1, 0.1, 1.0])  # [0.2, 0.2, 1.0]
         point_cloud_range: List[float] = field(
             default_factory=lambda: [-3.2, -3.2, -2.0, 3.2, 3.2, 2.0]
-        )  # [-51.2, -51.2, -10, 51.2, 51.2, 10], [-12.8, -12.8, -10, 12.8, 12.8, 10]
+        )  # [-51.2, -51.2, -10, 51.2, 51.2, 10]
         max_num_points: int = 32  # 32
         max_voxels: Tuple[float] = field(default_factory=lambda: (16000, 40000))  # (16000, 40000)
         output_channels: int = 96  # 96
 
-    fusion_net: FusionNetParams = FusionNetParams()
     lift_splat_shoot_net: LiftSplatShootNetParams = LiftSplatShootNetParams()
     point_pillars: PointPillarsParams = PointPillarsParams()
+    fusion_net = FusionNetParams()
+
     # image_backbone: str = "lift_splat_shoot_net"  # If skip, set to "skip"
     image_backbone: str = "skip"  # If skip, set to "skip"
     pointcloud_backbone: str = "point_pillars"  # If skip, set to "skip"
     # pointcloud_backbone: str = "skip"  # If skip, set to "skip"
+    fusion_backbone: str = "MLP"  # "CNN", "RNVP" or "MLP"
+
+    def __post_init__(self):
+        if self.fusion_backbone == "CNN":
+            self.fusion_net = self.CNNParams()
+        elif self.fusion_backbone == "RNVP":
+            self.fusion_net = self.RealNVPParams()
+        elif self.fusion_backbone == "MLP":
+            self.fusion_net = self.MLPParams()
 
 
+# Do not change below here
 model: ModelParams = ModelParams()

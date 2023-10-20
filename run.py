@@ -28,25 +28,28 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
-LOGGING_NAME = "bevnet3"
-
 
 class BevTraversability:
     def __init__(self, wandb_logging=False):
         self._model_cfg = ModelParams()
+        self._run_cfg = RunParams()
+        self._data_cfg = DataParams()
+
         self._model = BevNet(self._model_cfg)
         self._model.cuda()
 
         self.wandb_logging = wandb_logging
-
-        self._run_cfg = RunParams()
-        self._data_cfg = DataParams()
         if self.wandb_logging:
-            wandb.init(project=LOGGING_NAME)
+            wandb.init(project=self._run_cfg.log_name)
 
-        self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._model_cfg.fusion_net.lr)
-        self._loss = AnomalyLoss()
-        # self._loss = torch.nn.functional.mse_loss
+        self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._run_cfg.lr)
+
+        if self._model_cfg.fusion_backbone == "CNN":
+            self._loss = torch.nn.functional.mse_loss
+        elif self._model_cfg.fusion_backbone == "RNVP":
+            self._loss = AnomalyLoss()
+        elif self._model_cfg.fusion_backbone == "MLP":
+            self._loss = torch.nn.functional.mse_loss
 
     def train(self, save_model=False):
         self._model.train()
@@ -76,9 +79,12 @@ class BevTraversability:
                 )
 
                 # Compute loss
-                loss_mean, loss_pred = self._loss(pred)
-                # loss_mean = self._loss(pred, target.cuda().float())   # Use this for BEV MLP
-                # loss_mean = self._loss(pred, target.cuda().float().reshape(-1, 1))  # Use this for linear MLP
+                if self._model_cfg.fusion_backbone == "CNN":
+                    loss_mean = self._loss(pred, target.cuda().float())
+                elif self._model_cfg.fusion_backbone == "RNVP":
+                    loss_mean, loss_pred = self._loss(pred)
+                elif self._model_cfg.fusion_backbone == "MLP":
+                    loss_mean = self._loss(pred, target.cuda().float().reshape(-1, 1))
 
                 print(f"{j} | {loss_mean.item():.5f}")
 
@@ -90,9 +96,9 @@ class BevTraversability:
                 loss_mean.backward()
                 self._optimizer.step()
 
-            if save_model:
-                print("Saving model ...")
-                torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
+                if save_model:
+                    print("Saving model ...")
+                    torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
 
     def predict(self, load_model=True, model_name="bevnet", save_pred=False):
         if load_model:
@@ -105,7 +111,7 @@ class BevTraversability:
                 ValueError("This model configuration does not exist!")
 
             # Set the model to evaluation mode
-            self._model.eval()  # TODO: turning this on causes different output with big values
+            self._model.eval()  # TODO: turning this on causes different output
 
         data_loader = get_bev_dataloader(mode="test", batch_size=1)
         for j, batch in enumerate(data_loader):
@@ -129,24 +135,23 @@ class BevTraversability:
                         pcd_new,
                     )
 
-            loss_mean, loss_pred = self._loss(pred)
+            # Compute loss
+            if self._model_cfg.fusion_backbone == "RNVP":
+                _, x = self._loss(pred)
+            else:
+                x = pred
 
-            pred = loss_pred
-
-            # print(loss_pred)
-
-            # print(loss_train)
-            x = pred.cpu().detach().numpy()
-            square_size = int(x.size ** 0.5)
-            x = x.reshape(square_size, square_size)
-            pred = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
-            # pred = x
+            # Normalize
+            x = x.cpu().detach().numpy()
+            sz = int(x.size ** 0.5)
+            x = x.reshape(sz, sz)
+            pred_out = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
 
             if save_pred:
-                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0], "pred", f"{j}.jpg"), pred)
+                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0], "pred", f"{j}.jpg"), pred_out)
 
                 if self.wandb_logging:
-                    wandb.log({"prediction": wandb.Image(pred)})
+                    wandb.log({"prediction": wandb.Image(pred_out)})
 
 
 if __name__ == "__main__":
@@ -165,4 +170,4 @@ if __name__ == "__main__":
     elif args.p:
         bt.predict(load_model=True, save_pred=True)
     else:
-        raise ValueError(f"Unknown mode, please specify -t (for train), -p (for test), -l (if wandb logging)")
+        raise ValueError(f"Unknown mode, please specify -t (for train), -p (for test), -l (for wandb logging)")

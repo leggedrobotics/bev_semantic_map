@@ -8,9 +8,6 @@ from bevnet import network
 import torch.nn.functional as F
 import torchshow as ts
 
-# Global settings
-SAVE_PRED = True
-
 
 def get(name: str):
     for ele in dir(network):
@@ -36,41 +33,36 @@ class BevNet(torch.nn.Module):
         if cfg_model.image_backbone != "skip":
             cfg = getattr(cfg_model, cfg_model.image_backbone)
             self.image_backbone = get(cfg_model.image_backbone)(cfg)
-            fusion_net_input_channels += cfg.output_channels
+            fusion_net_input_channels += cfg.output_channels    # 64
 
         if cfg_model.pointcloud_backbone != "skip":
             cfg = getattr(cfg_model, cfg_model.pointcloud_backbone)
             self.pointcloud_backbone = get(cfg_model.pointcloud_backbone)(cfg)
-            fusion_net_input_channels += cfg.output_channels
+            fusion_net_input_channels += cfg.output_channels    # 96
 
-        if cfg_model.fusion_net.multi_head:
+        if cfg_model.fusion_backbone == "CNN":
             print("Using MultiHeadBevEncode")
             self.fusion_net = network.MultiHeadBevEncode(
                 fusion_net_input_channels, cfg_model.fusion_net.output_channels
             )
-        if cfg_model.fusion_net.anomaly:
-            print("Using AnomalyBevEncode")
-            # fusion_net_input_channels = 160
+        if cfg_model.fusion_backbone == "RNVP":
+            print("Using LinearRNVP")
             self.fusion_net = network.LinearRNVP(
                 input_dim=fusion_net_input_channels,
-                coupling_topology=[200],
-                flow_n=20,
-                batch_norm=False,
-                mask_type="odds",
-                conditioning_size=0,
-                use_permutation=True,
-                single_function=True,
+                coupling_topology=cfg_model.fusion_net.coupling_topology,
+                flow_n=cfg_model.fusion_net.flow_n,
+                batch_norm=cfg_model.fusion_net.batch_norm,
+                mask_type=cfg_model.fusion_net.mask_type,
+                conditioning_size=cfg_model.fusion_net.conditioning_size,
+                use_permutation=cfg_model.fusion_net.use_permutation,
+                single_function=cfg_model.fusion_net.single_function,
             )
-        if cfg_model.fusion_net.simple_mlp:
+        if cfg_model.fusion_backbone == "MLP":
             print("Using SimpleMLP")
             self.fusion_net = network.SimpleMLP(
-                input_size=fusion_net_input_channels, hidden_sizes=[256, 32, 1], reconstruction=False
+                input_size=fusion_net_input_channels, hidden_sizes=cfg_model.fusion_net.hidden_sizes,
+                reconstruction=cfg_model.fusion_net.reconstruction
             )
-        # else:
-        #     self.fusion_net = network.BevEncode(fusion_net_input_channels, cfg_model.fusion_net.output_channels)
-
-        # self.optimizer = torch.optim.Adam(self.fusion_net.parameters(), lr=cfg_model.fusion_net.lr)
-        # self.loss = torch.nn.MSELoss()
 
     def forward(self, imgs, rots, trans, intrins, post_rots, post_trans, target_shape, pcd_new, target=None):
         """
@@ -119,7 +111,10 @@ class BevNet(torch.nn.Module):
                     x=pcd_new["points"], batch=pcd_new["batch"], scan=pcd_new["scan"]
                 )
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
+
+                # Visualize first 25 features for debugging
                 # ts.show(pcd_features[0, :25, :, :])
+
                 features.append(pcd_features)
             except Exception as e:
                 raise ValueError("Pointcloud backbone failed")
@@ -131,49 +126,43 @@ class BevNet(torch.nn.Module):
                 "post_rots": post_rots,
                 "post_trans": post_trans,
             }
-            all_data = {"camera_info": camera_info, "imgs": imgs, "pcd_new": pcd_new}
+            # all_data = {"camera_info": camera_info, "imgs": imgs, "pcd_new": pcd_new}
 
             image_features = self.image_backbone(
                 imgs, rots, trans, intrins, post_rots, post_trans, pcd_new=pcd_new, camera_info=camera_info
             )
-            # flip x to minus x and y to minus y
+
+            # Flip x to minus x and y to minus y
             image_features = torch.flip(image_features, dims=(2, 3))
+
+            # Visualize first 25 features for debugging
             # ts.show(image_features[0, :25, :, :])
+
             features.append(image_features)
 
         features = torch.cat(features, dim=1)  # Simply stack features from different backbones
 
+        # Visualize first 25 features for debugging
         # ts.show(features[0, :25, :, :])
         # print("features shape:", features.shape)
 
-        if self.cfg_model.fusion_net.anomaly:
-            # Change feature dimension
+        if self.cfg_model.fusion_backbone == "RNVP":
+            # Convert feature size
             features = features.permute(0, 2, 3, 1)  # (BS, C, H, W) -> (BS, H, W, C)
-            # features = features.view(-1, features.shape[-1])    # (BS, H, W, C) -> (BS*H*W, C)
-
             features = features.view(
                 -1, features.shape[1] * features.shape[2], features.shape[-1]
             )  # (BS, H, W, C) -> (BS, H*W, C)
 
             # If target is available, mask out only positive samples
             if target is not None:
-                # target = target.view(-1)
-                target = target.view(-1, target.shape[2] * target.shape[3])  # (BS, H, W, C) -> (BS, H*W)
+                target = target.view(-1, target.shape[2] * target.shape[3])  # (BS, H, W, C) -> (BS*C, H*W)
                 features = features[target]
             else:
                 features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C)
 
+        if self.cfg_model.fusion_backbone == "MLP":
+            features = features.reshape(-1, features.shape[1])  # (BS, C, H, W) -> (BS*H*W, C
+
+        return self.fusion_net(features)
         # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for
         # efficiency
-
-        # print(features.shape)
-        # features = features.reshape(-1, features.shape[1])    # Only need this for 1d linear MLP
-        # print(features.shape)
-        return self.fusion_net(features)  # Store the tensor in a contiguous chunk of memory for efficiency
-
-
-if __name__ == "__main__":
-
-    model_cfg = ModelParams()
-    model = BevNet(model_cfg)
-    model.cuda()
