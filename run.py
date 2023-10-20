@@ -140,7 +140,7 @@ class BevTraversability:
             else:
                 x = pred
 
-            # Normalize
+            # Normalize for visualization
             x = x.cpu().detach().numpy()
             sz = int(x.size ** 0.5)
             x = x.reshape(sz, sz)

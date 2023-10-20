@@ -6,7 +6,6 @@ import os
 
 @dataclass
 class DataParams:
-
     mode: str = "train"
 
     # Sensors
@@ -16,9 +15,6 @@ class DataParams:
     # Image
     img_width: int = 640  # 640, 128; 720
     img_height: int = 480  # 480, 128; 540
-
-    # Point cloud
-    nr_points: int = 5000
 
     # Camera parameters
     intrin = [255.8245, 0.0000, 331.4361, 0.0000, 257.1399, 230.8981, 0.0000, 0.0000, 1.0000]  # 640 x 480

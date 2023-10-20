@@ -1,6 +1,4 @@
-
-
-# bevnet
+# BEVnet + anomaly detection
 
 ```
 cd ~/git/bevnet/bevnet/network/ops
@@ -10,7 +8,7 @@ cd ~/git/bevnet
 pip3 install -e ./
 
 ```
-## Additional installations
+## Additional dependencies
 ```
 pip install pytictac
 pip install efficientnet-pytorch

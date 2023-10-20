@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field, asdict
 from typing import Tuple, Dict, List, Optional, Any
-import torch
 
 
 @dataclass
@@ -78,11 +77,11 @@ class ModelParams:
     point_pillars: PointPillarsParams = PointPillarsParams()
     fusion_net = FusionNetParams()
 
-    # image_backbone: str = "lift_splat_shoot_net"  # If skip, set to "skip"
-    image_backbone: str = "skip"  # If skip, set to "skip"
-    pointcloud_backbone: str = "point_pillars"  # If skip, set to "skip"
-    # pointcloud_backbone: str = "skip"  # If skip, set to "skip"
-    fusion_backbone: str = "RNVP"  # "CNN", "RNVP" or "MLP"
+    # image_backbone: str = "lift_splat_shoot_net"  # "lift_splat_shoot_net" or "skip
+    image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
+    pointcloud_backbone: str = "point_pillars"  # "point_pillars" or "skip"
+    # pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
+    fusion_backbone: str = "MLP"  # "CNN", "RNVP" or "MLP"
 
     def __post_init__(self):
         if self.fusion_backbone == "CNN":
