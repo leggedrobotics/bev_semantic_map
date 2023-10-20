@@ -33,9 +33,6 @@ class DemoDataset(torch.utils.data.Dataset):
         post_trans = []
 
         for _ in range(self.cfg_data.nr_cameras):
-            # post_rot = torch.eye(2)
-            # post_tran = torch.zeros(2)
-            intrin = torch.eye(3)
             intrin = torch.Tensor(self.cfg_data.intrin).reshape(3, 3)
 
             # img = np.zeros((self.cfg_data.img_width, self.cfg_data.img_height, 3), dtype=np.uint8)
@@ -116,9 +113,8 @@ class DemoDataset(torch.utils.data.Dataset):
         )  # Labels and aux labels in BEV space
         target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)
 
-        # Get dummy image
-        # target = self.get_dummy_target()
-
+        # Get dummy image for debugging
+        # target = self.get_dummy_target(
         # Save target image for debugging
         # target_out = target.permute(1, 2, 0).cpu().numpy()
         # target_out = (target_out * 255).astype(np.uint8)

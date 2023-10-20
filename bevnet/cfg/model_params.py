@@ -82,7 +82,7 @@ class ModelParams:
     image_backbone: str = "skip"  # If skip, set to "skip"
     pointcloud_backbone: str = "point_pillars"  # If skip, set to "skip"
     # pointcloud_backbone: str = "skip"  # If skip, set to "skip"
-    fusion_backbone: str = "MLP"  # "CNN", "RNVP" or "MLP"
+    fusion_backbone: str = "RNVP"  # "CNN", "RNVP" or "MLP"
 
     def __post_init__(self):
         if self.fusion_backbone == "CNN":

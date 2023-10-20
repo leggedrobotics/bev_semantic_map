@@ -24,7 +24,6 @@ from bevnet.utils import Timer
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
@@ -96,9 +95,9 @@ class BevTraversability:
                 loss_mean.backward()
                 self._optimizer.step()
 
-                if save_model:
-                    print("Saving model ...")
-                    torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
+            if save_model:
+                print("Saving model ...")
+                torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
 
     def predict(self, load_model=True, model_name="bevnet", save_pred=False):
         if load_model:
