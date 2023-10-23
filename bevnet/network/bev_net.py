@@ -3,9 +3,8 @@ import torch
 from bevnet.cfg import ModelParams
 from icecream import ic
 
-from bevnet import network
+from bevnet import network, models
 
-import torch.nn.functional as F
 import torchshow as ts
 
 
@@ -45,9 +44,11 @@ class BevNet(torch.nn.Module):
             self.fusion_net = network.MultiHeadBevEncode(
                 fusion_net_input_channels, cfg_model.fusion_net.output_channels
             )
+        if cfg_model.autoencoder:
+            self.autoencoder = models.AutoEncoder()
         if cfg_model.fusion_backbone == "RNVP":
             print("Using LinearRNVP")
-            self.fusion_net = network.LinearRNVP(
+            self.fusion_net = models.LinearRNVP(
                 input_dim=fusion_net_input_channels,
                 coupling_topology=cfg_model.fusion_net.coupling_topology,
                 flow_n=cfg_model.fusion_net.flow_n,
@@ -59,10 +60,16 @@ class BevNet(torch.nn.Module):
             )
         if cfg_model.fusion_backbone == "MLP":
             print("Using SimpleMLP")
-            self.fusion_net = network.SimpleMLP(
+            self.fusion_net = models.SimpleMLP(
                 input_size=fusion_net_input_channels, hidden_sizes=cfg_model.fusion_net.hidden_sizes,
                 reconstruction=cfg_model.fusion_net.reconstruction
             )
+        # if cfg_model.fusion_backbone == "AE":
+        #     print("Using AE")
+        #     self.fusion_net = network.AE(
+        #         input_size=fusion_net_input_channels, hidden_sizes=cfg_model.fusion_net.hidden_sizes,
+        #         reconstruction=cfg_model.fusion_net.reconstruction
+        #     )
 
     def forward(self, imgs, rots, trans, intrins, post_rots, post_trans, target_shape, pcd_new, target=None):
         """
@@ -161,8 +168,11 @@ class BevNet(torch.nn.Module):
                 features = features.view(-1, features.shape[-1])  # (BS, H, W, C) -> (BS*H*W, C)
 
         if self.cfg_model.fusion_backbone == "MLP":
-            features = features.reshape(-1, features.shape[1])  # (BS, C, H, W) -> (BS*H*W, C
+            features = features.reshape(-1, features.shape[1])  # (BS, C, H, W) -> (BS*H*W, C)
 
-        return self.fusion_net(features)
+        # ic(features.shape)
+        features = self.fusion_net(features)
+
+        return features
         # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for
         # efficiency

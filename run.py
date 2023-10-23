@@ -18,7 +18,8 @@ from icecream import ic
 
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
-from bevnet.network.loss import AnomalyLoss
+from bevnet.models import AutoEncoder
+from bevnet.loss import AnomalyLoss
 from bevnet.dataset import get_bev_dataloader
 from bevnet.utils import Timer
 
@@ -49,6 +50,9 @@ class BevTraversability:
             self._loss = AnomalyLoss()
         elif self._model_cfg.fusion_backbone == "MLP":
             self._loss = torch.nn.functional.mse_loss
+        if self._model_cfg.autoencoder:
+            self.autoencoder = AutoEncoder()
+            self.autoencoder.cuda()
 
     def train(self, save_model=False):
         self._model.train()
@@ -77,9 +81,14 @@ class BevTraversability:
                     target.cuda(),
                 )
 
+                # AE: (1, 64, 64) -> (32, 16, 16) -> (64, 8, 8) -> (32, 16, 16) -> (1, 64, 64)
+                pred_ae = self.autoencoder(pred)
+
                 # Compute loss
                 if self._model_cfg.fusion_backbone == "CNN":
-                    loss_mean = self._loss(pred, target.cuda().float())
+                    # loss_mean = self._loss(pred[target.cuda()], target.cuda().float()[target.cuda()])
+                    # loss_mean = self._loss(pred, target.cuda().float())
+                    loss_mean = self._loss(pred[target.cuda()], pred_ae[target.cuda()])
                 elif self._model_cfg.fusion_backbone == "RNVP":
                     loss_mean, loss_pred = self._loss(pred)
                 elif self._model_cfg.fusion_backbone == "MLP":

@@ -81,7 +81,8 @@ class ModelParams:
     image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
     pointcloud_backbone: str = "point_pillars"  # "point_pillars" or "skip"
     # pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
-    fusion_backbone: str = "MLP"  # "CNN", "RNVP" or "MLP"
+    fusion_backbone: str = "CNN"  # "CNN", "RNVP" or "MLP"
+    autoencoder: bool = True
 
     def __post_init__(self):
         if self.fusion_backbone == "CNN":

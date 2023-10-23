@@ -136,16 +136,25 @@ class BevEncode(nn.Module):
         )
 
     def forward(self, x):
+        # ic(x.shape)
         x = self.conv1(x)
+        # ic(x.shape)
         x = self.bn1(x)
+        # ic(x.shape)
         x = self.relu(x)
+        # ic(x.shape)
 
         x1 = self.layer1(x)
+        # ic(x1.shape)
         x = self.layer2(x1)
+        # ic(x.shape)
         x = self.layer3(x)
+        # ic(x.shape)
 
         x = self.up1(x, x1)
+        # ic(x.shape)
         x = self.up2(nn.functional.interpolate(x, scale_factor=2, mode="bilinear", align_corners=True))
+        # ic(x.shape)
 
         return x
 
