@@ -51,10 +51,10 @@ class BevTraversability:
         elif self._model_cfg.fusion_backbone == "MLP":
             self._loss = torch.nn.functional.mse_loss
         if self._model_cfg.autoencoder:
-            self.autoencoder = AutoEncoder()
-            self.autoencoder.cuda()
+            self._autoencoder = AutoEncoder()
+            self._autoencoder.cuda()
 
-    def train(self, save_model=False):
+    def train(self, save_model=False, model_name="bevnet"):
         self._model.train()
 
         data_loader = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
@@ -69,7 +69,7 @@ class BevTraversability:
                 )
 
                 # Forward pass
-                pred = self._model(
+                pred, pred_ae = self._model(
                     imgs.cuda(),
                     rots.cuda(),
                     trans.cuda(),
@@ -81,13 +81,9 @@ class BevTraversability:
                     target.cuda(),
                 )
 
-                # AE: (1, 64, 64) -> (32, 16, 16) -> (64, 8, 8) -> (32, 16, 16) -> (1, 64, 64)
-                pred_ae = self.autoencoder(pred)
-
                 # Compute loss
                 if self._model_cfg.fusion_backbone == "CNN":
-                    # loss_mean = self._loss(pred[target.cuda()], target.cuda().float()[target.cuda()])
-                    # loss_mean = self._loss(pred, target.cuda().float())
+                    # loss_mean = self._loss(pred_ae, target.cuda().float())
                     loss_mean = self._loss(pred[target.cuda()], pred_ae[target.cuda()])
                 elif self._model_cfg.fusion_backbone == "RNVP":
                     loss_mean, loss_pred = self._loss(pred)
@@ -106,7 +102,7 @@ class BevTraversability:
 
             if save_model:
                 print("Saving model ...")
-                torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
+                torch.save(self._model.state_dict(), f"bevnet/weights/{model_name}.pth")
 
     def predict(self, load_model=True, model_name="bevnet", save_pred=False):
         if load_model:
@@ -132,7 +128,7 @@ class BevTraversability:
             with Timer(f"Inference {j}"):
                 with torch.no_grad():
                     # Forward pass
-                    pred = self._model(
+                    pred, pred_ae = self._model(
                         imgs.cuda(),
                         rots.cuda(),
                         trans.cuda(),

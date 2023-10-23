@@ -44,8 +44,6 @@ class BevNet(torch.nn.Module):
             self.fusion_net = network.MultiHeadBevEncode(
                 fusion_net_input_channels, cfg_model.fusion_net.output_channels
             )
-        if cfg_model.autoencoder:
-            self.autoencoder = models.AutoEncoder()
         if cfg_model.fusion_backbone == "RNVP":
             print("Using LinearRNVP")
             self.fusion_net = models.LinearRNVP(
@@ -64,12 +62,8 @@ class BevNet(torch.nn.Module):
                 input_size=fusion_net_input_channels, hidden_sizes=cfg_model.fusion_net.hidden_sizes,
                 reconstruction=cfg_model.fusion_net.reconstruction
             )
-        # if cfg_model.fusion_backbone == "AE":
-        #     print("Using AE")
-        #     self.fusion_net = network.AE(
-        #         input_size=fusion_net_input_channels, hidden_sizes=cfg_model.fusion_net.hidden_sizes,
-        #         reconstruction=cfg_model.fusion_net.reconstruction
-        #     )
+        if cfg_model.autoencoder:
+            self.autoencoder = models.AutoEncoder()
 
     def forward(self, imgs, rots, trans, intrins, post_rots, post_trans, target_shape, pcd_new, target=None):
         """
@@ -173,6 +167,10 @@ class BevNet(torch.nn.Module):
         # ic(features.shape)
         features = self.fusion_net(features)
 
-        return features
+        if self.cfg_model.autoencoder:
+            features_ae = self.autoencoder(features)
+            return features, features_ae
+        else:
+            return features
         # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for
         # efficiency

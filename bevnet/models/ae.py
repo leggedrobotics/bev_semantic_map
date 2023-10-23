@@ -5,6 +5,8 @@ class AutoEncoder(torch.nn.Module):
     def __init__(self):
         super(AutoEncoder, self).__init__()
 
+        # (1, 64, 64) -> (32, 16, 16) -> (64, 8, 8) -> (32, 16, 16) -> (1, 64, 64)
+
         # Encoder
         self.encoder = torch.nn.Sequential(
             # Input size: 1x64x64

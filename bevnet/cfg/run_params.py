@@ -6,9 +6,9 @@ import torch
 @dataclass
 class RunParams:
     training_batch_size: int = 4
-    epochs: int = 10
+    epochs: int = 2
     lr: float = 1e-4
-    log_name: str = "bevnet5"
+    log_name: str = "bevnet6"
 
 
 data: RunParams = RunParams()
