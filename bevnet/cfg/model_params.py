@@ -82,7 +82,7 @@ class ModelParams:
     pointcloud_backbone: str = "point_pillars"  # "point_pillars" or "skip"
     # pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
     fusion_backbone: str = "CNN"  # "CNN", "RNVP" or "MLP"
-    autoencoder: bool = True
+    autoencoder: bool = False
 
     def __post_init__(self):
         if self.fusion_backbone == "CNN":

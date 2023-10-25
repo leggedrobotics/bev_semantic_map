@@ -171,6 +171,6 @@ class BevNet(torch.nn.Module):
             features_ae = self.autoencoder(features)
             return features, features_ae
         else:
-            return features
+            return features, None
         # return self.fusion_net(features).contiguous()  # Store the tensor in a contiguous chunk of memory for
         # efficiency

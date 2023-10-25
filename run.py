@@ -11,6 +11,7 @@ import os
 import cv2
 import numpy as np
 import torch
+import time
 import wandb
 import argparse
 from tqdm import tqdm
@@ -83,8 +84,8 @@ class BevTraversability:
 
                 # Compute loss
                 if self._model_cfg.fusion_backbone == "CNN":
-                    # loss_mean = self._loss(pred_ae, target.cuda().float())
-                    loss_mean = self._loss(pred[target.cuda()], pred_ae[target.cuda()])
+                    loss_mean = self._loss(pred, target.cuda().float())
+                    # loss_mean = self._loss(pred[target.cuda()], pred_ae[target.cuda()])
                 elif self._model_cfg.fusion_backbone == "RNVP":
                     loss_mean, loss_pred = self._loss(pred)
                 elif self._model_cfg.fusion_backbone == "MLP":
@@ -152,7 +153,8 @@ class BevTraversability:
             pred_out = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
 
             if save_pred:
-                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0], "pred", f"{j}.jpg"), pred_out)
+                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
+                                         "pred", str(time.time()).replace(".", "_") + ".jpg"), pred_out)
 
                 if self.wandb_logging:
                     wandb.log({"prediction": wandb.Image(pred_out)})
