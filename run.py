@@ -84,7 +84,9 @@ class BevTraversability:
 
                 # Compute loss
                 if self._model_cfg.fusion_backbone == "CNN":
-                    loss_mean = self._loss(pred, target.cuda().float())
+                    mask = (target.cuda() > 0).float()
+                    loss_mean = self._loss(pred, target.cuda().float(), reduction="none") * mask
+                    loss_mean = torch.mean(loss_mean[loss_mean != 0])
                     # loss_mean = self._loss(pred[target.cuda()], pred_ae[target.cuda()])
                 elif self._model_cfg.fusion_backbone == "RNVP":
                     loss_mean, loss_pred = self._loss(pred)
@@ -116,7 +118,7 @@ class BevTraversability:
                 ValueError("This model configuration does not exist!")
 
             # Set the model to evaluation mode
-            self._model.eval()  # TODO: turning this on causes different output
+            self._model.eval()
 
         data_loader = get_bev_dataloader(mode="test", batch_size=1)
         for j, batch in enumerate(data_loader):
@@ -149,13 +151,12 @@ class BevTraversability:
             # Normalize for visualization
             x = x.cpu().detach().numpy()
             sz = int(x.size ** 0.5)
-            x = x.reshape(sz, sz)
+            x = x.reshape(sz, sz)   # From (B=1, C=1, H, W) to (H, W)
             pred_out = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
 
             if save_pred:
                 cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
-                                         "pred", str(time.time()).replace(".", "_") + ".jpg"), pred_out)
-
+                                         "pred", f"{j:04d}.jpg"), pred_out)
                 if self.wandb_logging:
                     wandb.log({"prediction": wandb.Image(pred_out)})
 
