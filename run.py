@@ -19,8 +19,6 @@ from icecream import ic
 
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
-from bevnet.models import AutoEncoder
-from bevnet.loss import AnomalyLoss
 from bevnet.dataset import get_bev_dataloader
 from bevnet.utils import Timer
 
@@ -28,6 +26,9 @@ from bevnet.utils import Timer
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
+
+POS_WEIGHT = 0.2    # Num neg / num pos
+THRESHOLD = 0.15
 
 
 class BevTraversability:
@@ -45,7 +46,7 @@ class BevTraversability:
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._run_cfg.lr)
 
-        self._loss = torch.nn.BCEWithLogitsLoss()
+        self._loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(POS_WEIGHT))
 
     def train(self, save_model=False, model_name="bevnet"):
         self._model.train()
@@ -74,13 +75,15 @@ class BevTraversability:
                     target.cuda(),
                 )
 
+                target -= 1     # Shift labels from {0, 1, 2} to {-1, 0, 1}
+
                 # Compute loss
-                mask = (target > 0).float().cuda()
+                mask = (target > -1).float().cuda()
                 loss = self._loss(pred, target.cuda())
                 loss = loss * mask
                 num_pixels = mask.sum()
                 if num_pixels > 0:
-                    loss_mean = loss.sum() / num_pixels
+                    loss_mean = loss.sum() / num_pixels     # Average loss over all non-background pixels
                 else:
                     loss_mean = torch.tensor(0.0)  # Avoid division by zero if there are no non-background pixels
 
@@ -133,19 +136,23 @@ class BevTraversability:
                         pcd_new,
                     )
 
-            x = pred
-
-            # Normalize for visualization
-            x = x.cpu().detach().numpy()
-            sz = int(x.size ** 0.5)
-            x = x.reshape(sz, sz)   # From (B=1, C=1, H, W) to (H, W)
-            pred_out = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
+            # Apply sigmoid and convert to NumPy array
+            x = torch.sigmoid(pred).squeeze().cpu().detach().numpy()
 
             if save_pred:
+                pred_conf = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
                 cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
-                                         "pred", f"{j:04d}.jpg"), pred_out)
+                                         "pred_conf", f"{j:04d}.jpg"), pred_conf)
+
+                # Threshold the values
+                x = (x > THRESHOLD).astype(int)
+                pred_label = np.zeros((x.shape[0], x.shape[1], 3), dtype=np.uint8)
+                pred_label[x == 0] = [0, 255, 0]  # BGR
+                pred_label[x == 1] = [0, 0, 255]  # BGR
+                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
+                                         "pred_label", f"{j:04d}.jpg"), pred_label)
                 if self.wandb_logging:
-                    wandb.log({"prediction": wandb.Image(pred_out)})
+                    wandb.log({"prediction": wandb.Image(pred_label)})
 
 
 if __name__ == "__main__":
