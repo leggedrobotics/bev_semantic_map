@@ -45,15 +45,7 @@ class BevTraversability:
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._run_cfg.lr)
 
-        if self._model_cfg.fusion_backbone == "CNN":
-            self._loss = torch.nn.functional.mse_loss
-        elif self._model_cfg.fusion_backbone == "RNVP":
-            self._loss = AnomalyLoss()
-        elif self._model_cfg.fusion_backbone == "MLP":
-            self._loss = torch.nn.functional.mse_loss
-        if self._model_cfg.autoencoder:
-            self._autoencoder = AutoEncoder()
-            self._autoencoder.cuda()
+        self._loss = torch.nn.BCEWithLogitsLoss()
 
     def train(self, save_model=False, model_name="bevnet"):
         self._model.train()
@@ -70,7 +62,7 @@ class BevTraversability:
                 )
 
                 # Forward pass
-                pred, pred_ae = self._model(
+                pred = self._model(
                     imgs.cuda(),
                     rots.cuda(),
                     trans.cuda(),
@@ -83,17 +75,16 @@ class BevTraversability:
                 )
 
                 # Compute loss
-                if self._model_cfg.fusion_backbone == "CNN":
-                    mask = (target.cuda() > 0).float()
-                    loss_mean = self._loss(pred, target.cuda().float(), reduction="none") * mask
-                    loss_mean = torch.mean(loss_mean[loss_mean != 0])
-                    # loss_mean = self._loss(pred[target.cuda()], pred_ae[target.cuda()])
-                elif self._model_cfg.fusion_backbone == "RNVP":
-                    loss_mean, loss_pred = self._loss(pred)
-                elif self._model_cfg.fusion_backbone == "MLP":
-                    loss_mean = self._loss(pred, target.cuda().float().reshape(-1, 1))
+                mask = (target > 0).float().cuda()
+                loss = self._loss(pred, target.cuda())
+                loss = loss * mask
+                num_pixels = mask.sum()
+                if num_pixels > 0:
+                    loss_mean = loss.sum() / num_pixels
+                else:
+                    loss_mean = torch.tensor(0.0)  # Avoid division by zero if there are no non-background pixels
 
-                print(f"{j} | {loss_mean.item():.5f}")
+                print(f"{j} | {loss_mean.item():.9f}")
 
                 if self.wandb_logging:
                     wandb.log({"train_loss": loss_mean.item()})
@@ -131,7 +122,7 @@ class BevTraversability:
             with Timer(f"Inference {j}"):
                 with torch.no_grad():
                     # Forward pass
-                    pred, pred_ae = self._model(
+                    pred = self._model(
                         imgs.cuda(),
                         rots.cuda(),
                         trans.cuda(),
@@ -142,11 +133,7 @@ class BevTraversability:
                         pcd_new,
                     )
 
-            # Compute loss
-            if self._model_cfg.fusion_backbone == "RNVP":
-                _, x = self._loss(pred)
-            else:
-                x = pred
+            x = pred
 
             # Normalize for visualization
             x = x.cpu().detach().numpy()
