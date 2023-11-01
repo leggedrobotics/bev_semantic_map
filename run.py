@@ -28,7 +28,7 @@ np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
 POS_WEIGHT = 0.2    # Num neg / num pos
-THRESHOLD = 0.15
+THRESHOLD = 0.1
 
 
 class BevTraversability:
