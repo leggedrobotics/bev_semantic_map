@@ -25,6 +25,7 @@ class NumpyToMapVisualizer:
     def __init__(self):
 
         self.show_mask = rospy.get_param("show_mask")
+        self.show_label = rospy.get_param("show_label")
         self.show_pc = rospy.get_param("show_pc")
         self.show_pred = rospy.get_param("show_pred")
         self.show_frustrum = rospy.get_param("show_frustrum")
@@ -151,6 +152,15 @@ if __name__ == "__main__":
         else:
             vis.show_mask = False
 
+    if vis.show_label:
+        label_dir = os.path.join(vis.data_dir, "bin_label")
+        label_files = sorted([f for f in os.listdir(label_dir) if f.endswith(".pt")])
+
+        if len(label_files) > 0:
+            num_files = len(label_files)
+        else:
+            vis.show_label = False
+
     if vis.show_pc:
         pc_dir = os.path.join(vis.data_dir, "pcd")
         pc_files = sorted([f for f in os.listdir(pc_dir) if f.endswith(".pt")])
@@ -178,7 +188,7 @@ if __name__ == "__main__":
     i = 0
 
     while not rospy.is_shutdown():
-        # for i, _ in enumerate(range(num_files)):
+        # print(i)
 
         if rospy.is_shutdown():
             break
@@ -189,6 +199,14 @@ if __name__ == "__main__":
             mask = mask[np.newaxis, ...].astype(np.uint8)
 
             vis.occupancy_map_arr(mask, RESOLUTION, x=0, y=0)
+
+        if vis.show_label:
+            label_path = os.path.join(label_dir, label_files[i])
+            label = torch.load(label_path)
+            label += 1
+            label = label[np.newaxis, ...].astype(np.uint8)
+
+            vis.occupancy_map_arr(label, RESOLUTION, x=0, y=0)
 
         if vis.show_pc:
             pc_path = os.path.join(pc_dir, pc_files[i])
@@ -212,9 +230,12 @@ if __name__ == "__main__":
             vis.frustrum_process(frustrum, publish=True)
             # frustrum_published = True
 
-        LOWER_LIM = rospy.get_param("dynamic_params/LOWER_LIM")
-        UPPER_LIM = rospy.get_param("dynamic_params/UPPER_LIM")
-        IDX = rospy.get_param("dynamic_params/IDX")
+        if rospy.has_param("dynamic_params_bev/LOWER_LIM"):
+            LOWER_LIM = rospy.get_param("dynamic_params_bev/LOWER_LIM")
+        if rospy.has_param("dynamic_params_bev/UPPER_LIM"):
+            UPPER_LIM = rospy.get_param("dynamic_params_bev/UPPER_LIM")
+        if rospy.has_param("dynamic_params_bev/IDX"):
+            IDX = rospy.get_param("dynamic_params_bev/IDX")
 
         if IDX < num_files:
             i = IDX

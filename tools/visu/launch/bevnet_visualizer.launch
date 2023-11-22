@@ -1,16 +1,17 @@
 <launch>
 <!--  set args -->
-  <param name="show_mask" value="true" />
+  <param name="show_mask" value="false" />
+  <param name="show_label" value="true" />
   <param name="show_pc" value="true" />
   <param name="show_pred" value="false" />
-  <param name="show_frustrum" value="false" />
+  <param name="show_frustrum" value="true" />
   <param name="data_dir" value="/home/rschmid/RosBags/bevnet/train" />
 
   <!-- Launch rqt_reconfigure using rosrun -->
 <!--  <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" output="screen" />-->
 
   <!-- Launch server.py using rosrun -->
-  <node name="dynamic_params" pkg="dynamic_params" type="server.py" output="screen"/>
+  <node name="dynamic_params_bev" pkg="dynamic_params_bev" type="server.py" output="screen"/>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/rviz/train.rviz" />
    <node pkg="bevnet_visualizer"
