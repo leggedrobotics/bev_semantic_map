@@ -1,0 +1,8 @@
+<launch>
+  <!-- Launch rqt_reconfigure using rosrun -->
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" args="-s reconfigure" output="screen" />
+
+  <!-- Launch server.py using rosrun -->
+  <node name="dynamic_params_bev" pkg="dynamic_params_bev" type="server.py" output="screen"/>
+
+</launch>
