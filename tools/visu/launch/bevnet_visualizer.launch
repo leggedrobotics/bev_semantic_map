@@ -13,7 +13,7 @@
   <!-- Launch server.py using rosrun -->
   <node name="dynamic_params_bev" pkg="dynamic_params_bev" type="server.py" output="screen"/>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/rviz/train.rviz" />
+  <node name="bev_rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/rviz/train.rviz" />
    <node pkg="bevnet_visualizer"
       name="bevnet_visualizer"
       type="bevnet_visualizer.py"

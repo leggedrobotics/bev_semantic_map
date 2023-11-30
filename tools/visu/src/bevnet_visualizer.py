@@ -163,6 +163,7 @@ if __name__ == "__main__":
 
     if vis.show_pc:
         pc_dir = os.path.join(vis.data_dir, "pcd")
+        # pc_dir = "/home/rschmid/RosBags/bevnet/train/pc_ext"
         pc_files = sorted([f for f in os.listdir(pc_dir) if f.endswith(".pt")])
 
         if len(pc_files) > 0:
@@ -205,6 +206,9 @@ if __name__ == "__main__":
             label = torch.load(label_path)
             label += 1
             label = label[np.newaxis, ...].astype(np.uint8)
+
+            # # Flip around x axis
+            label = np.flip(label, axis=1)
 
             vis.occupancy_map_arr(label, RESOLUTION, x=0, y=0)
 
