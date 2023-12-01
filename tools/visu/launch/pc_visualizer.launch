@@ -1,0 +1,16 @@
+<launch>
+<!--  set args -->
+  <param name="show_pc1" value="true" />
+  <param name="show_pc2" value="false" />
+  <param name="data_dir" value="/home/rschmid/RosBags/bevnet/train" />
+
+  <!-- Launch server.py using rosrun -->
+  <node name="dynamic_params_bev" pkg="dynamic_params_bev" type="server.py" output="screen"/>
+
+  <node name="pc_rviz" pkg="rviz" type="rviz" args="-d $(find bevnet_visualizer)/rviz/pc.rviz" />
+   <node pkg="bevnet_visualizer"
+      name="pc_visualizer"
+      type="pc_visualizer.py"
+      output="screen">
+  </node>
+</launch>
