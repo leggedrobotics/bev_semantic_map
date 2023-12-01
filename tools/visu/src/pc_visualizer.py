@@ -4,8 +4,8 @@ import os
 import sys
 import rospy
 from sensor_msgs.msg import PointCloud2
-import sensor_msgs.point_cloud2 as pc2
 import std_msgs.msg
+import sensor_msgs.point_cloud2
 import numpy as np
 import cv2
 import torch
@@ -26,7 +26,7 @@ class PcdVisualizer:
         header.frame_id = "world"
 
         # Create a PointCloud2 message
-        pointcloud_msg = pc2.create_cloud_xyz32(header, point_cloud)
+        pointcloud_msg = sensor_msgs.point_cloud2.create_cloud_xyz32(header, point_cloud)
 
         if publish:
             self.pub_pc1.publish(pointcloud_msg)
@@ -36,7 +36,7 @@ class PcdVisualizer:
         header.frame_id = "world"
 
         # Create a PointCloud2 message
-        pointcloud_msg = pc2.create_cloud_xyz32(header, point_cloud)
+        pointcloud_msg = sensor_msgs.point_cloud2.create_cloud_xyz32(header, point_cloud)
 
         if publish:
             self.pub_pc2.publish(pointcloud_msg)
@@ -89,14 +89,20 @@ if __name__ == "__main__":
             pc_path1 = os.path.join(pc_dir1, pc_files1[i])
             pc1 = torch.load(pc_path1, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
 
-            vis.correct_z_direction(pc1)
+            print(pc1.dtype)
+            print(pc1.shape)
+
+            pc1 = vis.correct_z_direction(pc1)
             vis.point_cloud_process1(pc1, publish=True)
 
         if vis.show_pc2:
             pc_path2 = os.path.join(pc_dir2, pc_files2[i])
             pc2 = torch.load(pc_path2, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
 
-            vis.correct_z_direction(pc2)
+            print(pc2.dtype)
+            print(pc2.shape)
+
+            pc2 = vis.correct_z_direction(pc2)
             vis.point_cloud_process2(pc2, publish=True)
 
         if rospy.has_param("dynamic_params_bev/IDX"):

@@ -1,7 +1,7 @@
 <launch>
 <!--  set args -->
   <param name="show_pc1" value="true" />
-  <param name="show_pc2" value="false" />
+  <param name="show_pc2" value="true" />
   <param name="data_dir" value="/home/rschmid/RosBags/bevnet/train" />
 
   <!-- Launch server.py using rosrun -->
