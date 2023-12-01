@@ -2,7 +2,8 @@
 <!--  set args -->
   <param name="show_pc1" value="true" />
   <param name="show_pc2" value="true" />
-  <param name="data_dir" value="/home/rschmid/RosBags/bevnet/train" />
+  <param name="show_label" value="true" />
+  <param name="data_dir" value="/home/rschmid/RosBags/output" />
 
   <!-- Launch server.py using rosrun -->
   <node name="dynamic_params_bev" pkg="dynamic_params_bev" type="server.py" output="screen"/>
