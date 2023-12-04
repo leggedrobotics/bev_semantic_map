@@ -59,9 +59,9 @@ class ModelParams:
     point_pillars: PointPillarsParams = PointPillarsParams()
     fusion_net = FusionNetParams()
 
-    image_backbone: str = "lift_splat_shoot_net"  # "lift_splat_shoot_net" or "skip
-    # image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
-    pointcloud_backbone: str = "point_pillars"  # "point_pillars" or "skip"
+    # image_backbone: str = "lift_splat_shoot_net"  # "lift_splat_shoot_net" or "skip
+    image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
+    pointcloud_backbone: str = "point_pillars"   # "point_pillars" or "skip"
     # pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
     fusion_backbone: str = "CNN"    # "CNN" or "skip"
 

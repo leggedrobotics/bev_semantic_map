@@ -140,7 +140,8 @@ class BevTraversability:
             x = torch.sigmoid(pred).squeeze().cpu().detach().numpy()
 
             if save_pred:
-                pred_conf = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
+                pred_conf = x * 255
+                # pred_conf = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
                 cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
                                          "pred_conf", f"{j:04d}.jpg"), pred_conf)
 
