@@ -5,8 +5,8 @@ import torch
 
 @dataclass
 class RunParams:
-    training_batch_size: int = 4
-    epochs: int = 10
+    training_batch_size: int = 1
+    epochs: int = 30
     lr: float = 1e-4
     log_name: str = "bevnet_discriminative"
 

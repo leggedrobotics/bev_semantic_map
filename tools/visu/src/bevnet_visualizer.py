@@ -127,7 +127,7 @@ class NumpyToMapVisualizer:
 
     def correct_z_direction(self, point_cloud):
 
-        # Increase z value by 0.5
+        # Increase z value by 0.6
         point_cloud[:, 2] += 0.6
 
         return point_cloud

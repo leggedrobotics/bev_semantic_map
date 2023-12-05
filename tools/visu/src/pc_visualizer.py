@@ -1,10 +1,20 @@
 #!/usr/bin/env python
 
+"""
+Visualizes the point cloud and the grid map.
+
+Author: Robin Schmid
+Date: Dec 2023
+"""
+
+
 import os
 import sys
 import rospy
 from sensor_msgs.msg import PointCloud2
 import std_msgs.msg
+from grid_map_msgs.msg import GridMap, GridMapInfo
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 from nav_msgs.msg import OccupancyGrid
 import sensor_msgs.point_cloud2
 import numpy as np
@@ -14,6 +24,7 @@ import torch
 np.set_printoptions(threshold=sys.maxsize)
 
 RESOLUTION = 0.1
+LAYERS = ["mask"]
 
 
 class PcdVisualizer:
@@ -21,10 +32,12 @@ class PcdVisualizer:
         self.show_pc1 = rospy.get_param("show_pc1")
         self.show_pc2 = rospy.get_param("show_pc2")
         self.show_label = rospy.get_param("show_label")
+        self.show_pred = rospy.get_param("show_pred")
 
         self.data_dir = rospy.get_param("data_dir")
         self.pub_pc1 = rospy.Publisher("point_cloud1", PointCloud2, queue_size=1)
         self.pub_pc2 = rospy.Publisher("point_cloud2", PointCloud2, queue_size=1)
+        self.pub_grid_map = rospy.Publisher("grid_map", GridMap, queue_size=1)
         self.pub_occupancy_map = rospy.Publisher("occupancy_grid", OccupancyGrid, queue_size=1)
 
     def point_cloud_process1(self, point_cloud, publish=False):
@@ -48,11 +61,46 @@ class PcdVisualizer:
             self.pub_pc2.publish(pointcloud_msg)
 
     def correct_z_direction(self, point_cloud):
-
-        # Increase z value by 0.5
+        # Increase z value by 0.6
         point_cloud[:, 2] += 0.6
 
         return point_cloud
+
+    def grid_map_arr(self, arr, res, layers, reference_frame="world", publish=True, x=0, y=0):
+        size_x = arr.shape[1]
+        size_y = arr.shape[2]
+
+        data_dim_0 = MultiArrayDimension()
+        data_dim_0.label = "column_index"  # y dimension
+        data_dim_0.size = size_y  # number of columns which is y
+        data_dim_0.stride = size_y * size_x  # rows*cols
+        data_dim_1 = MultiArrayDimension()
+        data_dim_1.label = "row_index"  # x dimension
+        data_dim_1.size = size_x  # number of rows which is x
+        data_dim_1.stride = size_x  # number of rows
+        data = []
+
+        for i in range(arr.shape[0]):
+            data_tmp = Float32MultiArray()
+            data_tmp.layout.dim.append(data_dim_0)
+            data_tmp.layout.dim.append(data_dim_1)
+            data_tmp.data = arr[i, ::-1, ::-1].ravel()
+            data.append(data_tmp)
+
+        info = GridMapInfo()
+        info.pose.orientation.w = 1
+        info.header.seq = 0
+        info.header.stamp = rospy.Time.now()
+        info.resolution = res
+        info.length_x = size_x * res
+        info.length_y = size_y * res
+        info.header.frame_id = reference_frame
+        info.pose.position.x = x
+        info.pose.position.y = y
+        gm_msg = GridMap(info=info, layers=layers, basic_layers=[], data=data)
+        if publish:
+            self.pub_grid_map.publish(gm_msg)
+        return gm_msg
 
     def occupancy_map_arr(self, arr, res, reference_frame="world", publish=True, x=0, y=0):
         size_x = arr.shape[1]
@@ -111,6 +159,15 @@ if __name__ == "__main__":
         else:
             vis.show_label = False
 
+    if vis.show_pred:
+        pred_dir = os.path.join(vis.data_dir, "../pred_conf")
+        pred_files = sorted([f for f in os.listdir(pred_dir) if f.endswith(".jpg")])
+
+        if len(pred_files) > 0:
+            num_files = len(pred_files)
+        else:
+            vis.show_pred = False
+
     assert num_files > 0, "No files to go through!"
 
     i = 0
@@ -140,12 +197,23 @@ if __name__ == "__main__":
             label_path = os.path.join(label_dir, label_files[i])
             label = torch.load(label_path)
             label += 1
-            label = label[np.newaxis, ...].astype(np.uint8)
+            label = label[np.newaxis, ...].astype(np.uint8) # Shape: (1, H, W)
 
-            # # Flip around x axis
+            # Flip around x axis
             label = np.flip(label, axis=1)
 
             vis.occupancy_map_arr(label, RESOLUTION, x=0, y=0)
+
+        if vis.show_pred:
+            pred_path = os.path.join(pred_dir, pred_files[i])
+            pred = cv2.imread(pred_path)
+            pred = cv2.cvtColor(pred, cv2.COLOR_BGR2GRAY)
+            # pred = vis.preprocess_image(pred, LOWER_LIM, UPPER_LIM)
+            # pred = pred.astype(bool)
+            pred = pred[np.newaxis, ...].astype(np.uint8)
+
+            # print(pred)
+            vis.grid_map_arr(pred, RESOLUTION, LAYERS, x=0, y=0)
 
         if rospy.has_param("dynamic_params_bev/IDX"):
             IDX = rospy.get_param("dynamic_params_bev/IDX")

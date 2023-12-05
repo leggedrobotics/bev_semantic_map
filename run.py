@@ -20,7 +20,7 @@ from icecream import ic
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
-from bevnet.utils import Timer
+from bevnet.utils import Timer, DataVisualizer
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,6 +29,7 @@ torch.set_printoptions(edgeitems=200)
 
 POS_WEIGHT = 0.2    # Num neg / num pos
 THRESHOLD = 0.1
+VISU_DATA = True
 
 
 class BevTraversability:
@@ -48,6 +49,8 @@ class BevTraversability:
 
         self._loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(POS_WEIGHT))
 
+        self.data_visu = DataVisualizer()
+
     def train(self, save_model=False, model_name="bevnet"):
         self._model.train()
 
@@ -62,6 +65,18 @@ class BevTraversability:
                     pcd_new["scan"].cuda(),
                 )
 
+                if VISU_DATA:
+                    target_out = target.numpy() + 1
+                    target_out = target_out.astype(np.uint8).squeeze(1)
+
+                    # Flip around x axis
+                    target_out = np.flip(target_out, axis=1)
+
+                    pc_out = self.data_visu.correct_z_direction(pcd_new["points"])
+
+                    self.data_visu.publish_occ_map(target_out, res=0.1)
+                    self.data_visu.publish_pc(pc_out)
+
                 # Forward pass
                 pred = self._model(
                     imgs.cuda(),
@@ -75,7 +90,7 @@ class BevTraversability:
                     target.cuda(),
                 )
 
-                target -= 1     # Shift labels from {0, 1, 2} to {-1, 0, 1}
+                # target -= 1     # Shift labels from {0, 1, 2} to {-1, 0, 1}
 
                 # Compute loss
                 mask = (target > -1).float().cuda()
@@ -114,7 +129,7 @@ class BevTraversability:
             # Set the model to evaluation mode
             self._model.eval()
 
-        data_loader = get_bev_dataloader(mode="test", batch_size=1)
+        data_loader = get_bev_dataloader(mode="train", batch_size=1)
         for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (

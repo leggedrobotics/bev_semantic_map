@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+
+"""
+Demo dataset for testing BEVNet.
+
+Author: Robin Schmid
+Date: Sep 2023
+"""
+
 import cv2
 import torch
 import numpy as np
@@ -15,7 +24,8 @@ class DemoDataset(torch.utils.data.Dataset):
         self.cfg_data = cfg_data
 
         self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
-        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
+        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd", "*")))
+        # self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
         # self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "mask", "*")))
         self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_label", "*")))
 
@@ -67,7 +77,6 @@ class DemoDataset(torch.utils.data.Dataset):
         )
 
     def get_raw_pcd_data(self, idx):
-        # TODO: read point cloud in base frame
         # H_pc_cam = [*self.cfg_data.trans_base_cam, *self.cfg_data.rot_base_cam]
         pcd_new = {}
         pcd_new["points"] = []
@@ -112,6 +121,9 @@ class DemoDataset(torch.utils.data.Dataset):
             torch.zeros(self.cfg_data.aux_shape),
         )  # Labels and aux labels in BEV space
         if len(self.target_paths) > 0:
+            target_np = torch.load(self.target_paths[idx])
+            # Flip along x-axis
+            target_np = np.flip(target_np, axis=1)
             target = torch.from_numpy(torch.load(self.target_paths[idx])).unsqueeze(0)  # (1, 512, 512), for numpy arrays
 
         # target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)
