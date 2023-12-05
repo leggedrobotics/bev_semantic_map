@@ -126,7 +126,7 @@ class BevTraversability:
             # Set the model to evaluation mode
             self._model.eval()
 
-        data_loader = get_bev_dataloader(mode="train", batch_size=1)
+        data_loader = get_bev_dataloader(mode="test", batch_size=1)
         for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
