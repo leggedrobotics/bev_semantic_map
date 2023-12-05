@@ -29,7 +29,7 @@ torch.set_printoptions(edgeitems=200)
 
 POS_WEIGHT = 0.2    # Num neg / num pos
 THRESHOLD = 0.1
-VISU_DATA = True
+VISU_DATA = False
 
 
 class BevTraversability:
@@ -68,9 +68,6 @@ class BevTraversability:
                 if VISU_DATA:
                     target_out = target.numpy() + 1
                     target_out = target_out.astype(np.uint8).squeeze(1)
-
-                    # Flip around x axis
-                    target_out = np.flip(target_out, axis=1)
 
                     pc_out = self.data_visu.correct_z_direction(pcd_new["points"])
 
