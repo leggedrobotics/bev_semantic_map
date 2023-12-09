@@ -8,14 +8,12 @@ Date: Sep 2023
 """
 
 import os
-import cv2
 import numpy as np
 import torch
-import time
 import wandb
 import argparse
 from tqdm import tqdm
-from icecream import ic
+
 
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
@@ -30,6 +28,8 @@ torch.set_printoptions(edgeitems=200)
 POS_WEIGHT = 0.2    # Num neg / num pos
 THRESHOLD = 0.1
 VISU_DATA = False
+# TEST_DATASET = "train"
+TEST_DATASET = "train"
 
 
 class BevTraversability:
@@ -49,7 +49,8 @@ class BevTraversability:
 
         self._loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(POS_WEIGHT))
 
-        self.data_visu = DataVisualizer()
+        if VISU_DATA:
+            self.data_visu = DataVisualizer()
 
     def train(self, save_model=False, model_name="bevnet"):
         self._model.train()
@@ -64,6 +65,9 @@ class BevTraversability:
                     pcd_new["batch"].cuda(),
                     pcd_new["scan"].cuda(),
                 )
+
+                # Flip target along x axis
+                # target = torch.flip(target, dims=[1])
 
                 if VISU_DATA:
                     target_out = target.numpy() + 1
@@ -126,7 +130,7 @@ class BevTraversability:
             # Set the model to evaluation mode
             self._model.eval()
 
-        data_loader = get_bev_dataloader(mode="test", batch_size=1)
+        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=TEST_DATASET, batch_size=1)
         for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -152,21 +156,26 @@ class BevTraversability:
             x = torch.sigmoid(pred).squeeze().cpu().detach().numpy()
 
             if save_pred:
-                pred_conf = x * 255
-                pred_conf = np.flip(pred_conf, axis=0) # Flip to match the image
-                # pred_conf = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
-                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
-                                         "pred_conf", f"{j:04d}.jpg"), pred_conf)
+                # x = np.flip(x, axis=0) # Flip to match the image
 
-                # Threshold the values
-                x = (x > THRESHOLD).astype(int)
-                pred_label = np.zeros((x.shape[0], x.shape[1], 3), dtype=np.uint8)
-                pred_label[x == 0] = [0, 255, 0]  # BGR
-                pred_label[x == 1] = [0, 0, 255]  # BGR
-                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
-                                         "pred_label", f"{j:04d}.jpg"), pred_label)
-                if self.wandb_logging:
-                    wandb.log({"prediction": wandb.Image(pred_label)})
+                print(self._data_cfg.data_dir)
+
+                torch.save(x, os.path.join(self._data_cfg.data_dir, "pred", f"{j:04d}.pt"))
+
+                # pred_conf = np.flip(pred_conf, axis=0) # Flip to match the image
+                # # pred_conf = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
+                # cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
+                #                          "pred_conf", f"{j:04d}.jpg"), pred_conf)
+                #
+                # # Threshold the values
+                # x = (x > THRESHOLD).astype(int)
+                # pred_label = np.zeros((x.shape[0], x.shape[1], 3), dtype=np.uint8)
+                # pred_label[x == 0] = [0, 255, 0]  # BGR
+                # pred_label[x == 1] = [0, 0, 255]  # BGR
+                # cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
+                #                          "pred_label", f"{j:04d}.jpg"), pred_label)
+                # if self.wandb_logging:
+                #     wandb.log({"prediction": wandb.Image(pred_label)})
 
 
 if __name__ == "__main__":

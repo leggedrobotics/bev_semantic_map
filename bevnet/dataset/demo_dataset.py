@@ -24,7 +24,7 @@ class DemoDataset(torch.utils.data.Dataset):
         self.cfg_data = cfg_data
 
         self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
-        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd", "*")))
+        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
         # self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
         # self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "mask", "*")))
         self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_label", "*")))
@@ -181,12 +181,11 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
 
 
 def get_bev_dataloader(mode="train", batch_size=1):
-
     data_cfg = DataParams(mode=mode)
     dataset = DemoDataset(data_cfg)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
 
-    return data_loader
+    return data_loader, data_cfg.data_dir
 
 
 if __name__ == "__main__":
