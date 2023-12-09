@@ -14,7 +14,6 @@ import wandb
 import argparse
 from tqdm import tqdm
 
-
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
@@ -25,12 +24,9 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
-POS_WEIGHT = 0.2    # Num neg / num pos
+POS_WEIGHT = 0.2  # Num neg / num pos
 THRESHOLD = 0.1
 VISU_DATA = False
-# TEST_DATASET = "train"
-TEST_DATASET = "train"
-
 
 class BevTraversability:
     def __init__(self, wandb_logging=False):
@@ -99,7 +95,7 @@ class BevTraversability:
                 loss = loss * mask
                 num_pixels = mask.sum()
                 if num_pixels > 0:
-                    loss_mean = loss.sum() / num_pixels     # Average loss over all non-background pixels
+                    loss_mean = loss.sum() / num_pixels  # Average loss over all non-background pixels
                 else:
                     loss_mean = torch.tensor(0.0)  # Avoid division by zero if there are no non-background pixels
 
@@ -158,24 +154,7 @@ class BevTraversability:
             if save_pred:
                 # x = np.flip(x, axis=0) # Flip to match the image
 
-                print(self._data_cfg.data_dir)
-
                 torch.save(x, os.path.join(self._data_cfg.data_dir, "pred", f"{j:04d}.pt"))
-
-                # pred_conf = np.flip(pred_conf, axis=0) # Flip to match the image
-                # # pred_conf = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
-                # cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
-                #                          "pred_conf", f"{j:04d}.jpg"), pred_conf)
-                #
-                # # Threshold the values
-                # x = (x > THRESHOLD).astype(int)
-                # pred_label = np.zeros((x.shape[0], x.shape[1], 3), dtype=np.uint8)
-                # pred_label[x == 0] = [0, 255, 0]  # BGR
-                # pred_label[x == 1] = [0, 0, 255]  # BGR
-                # cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0],
-                #                          "pred_label", f"{j:04d}.jpg"), pred_label)
-                # if self.wandb_logging:
-                #     wandb.log({"prediction": wandb.Image(pred_label)})
 
 
 if __name__ == "__main__":
@@ -184,9 +163,15 @@ if __name__ == "__main__":
     parser.add_argument("-t", action="store_true", help="""If set trains""")
     parser.add_argument("-p", action="store_true", help="""If set predicts""")
     parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
+    parser.add_argument('-d', default='t', choices=['t', 'p'], help="""Dataset specified (t: train, p: pred / test)""")
     args = parser.parse_args()
 
     bt = BevTraversability(args.l)
+
+    if args.d == 't':
+        TEST_DATASET = "train"
+    else:
+        TEST_DATASET = "test"
 
     # Setting training mode
     if args.t:
