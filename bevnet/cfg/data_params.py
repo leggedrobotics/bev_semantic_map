@@ -3,6 +3,8 @@ from typing import Tuple, Dict, List, Optional, Any
 import torch
 import os
 
+DATASET = "bevnet"
+
 
 @dataclass
 class DataParams:
@@ -27,7 +29,7 @@ class DataParams:
     grid_map_resolution: float = 0.1
 
     def __post_init__(self):
-        self.data_dir = os.path.join("/home/rschmid/RosBags/bevnet", self.mode)
+        self.data_dir = os.path.join(f"/home/rschmid/RosBags/{DATASET}", self.mode)
 
 
 data: DataParams = DataParams()

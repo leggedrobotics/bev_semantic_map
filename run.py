@@ -8,6 +8,7 @@ Date: Sep 2023
 """
 
 import os
+import cv2
 import numpy as np
 import torch
 import wandb
@@ -27,6 +28,7 @@ torch.set_printoptions(edgeitems=200)
 POS_WEIGHT = 0.2  # Num neg / num pos
 THRESHOLD = 0.1
 VISU_DATA = False
+
 
 class BevTraversability:
     def __init__(self, wandb_logging=False):
@@ -51,7 +53,7 @@ class BevTraversability:
     def train(self, save_model=False, model_name="bevnet"):
         self._model.train()
 
-        data_loader = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
+        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
 
         for _ in tqdm(range(self._run_cfg.epochs)):
             for j, batch in enumerate(data_loader):
@@ -62,17 +64,27 @@ class BevTraversability:
                     pcd_new["scan"].cuda(),
                 )
 
-                # Flip target along x axis
-                # target = torch.flip(target, dims=[1])
-
                 if VISU_DATA:
-                    target_out = target.numpy() + 1
-                    target_out = target_out.astype(np.uint8).squeeze(1)
+                    # ROS visualization
+                    # target_out = target.numpy() + 1
+                    # target_out = target_out.astype(np.uint8).squeeze(1)
+                    #
+                    # pc_out = self.data_visu.correct_z_direction(pcd_new["points"])
+                    #
+                    # self.data_visu.publish_occ_map(target_out, res=0.1)
+                    # self.data_visu.publish_pc(pc_out)
 
-                    pc_out = self.data_visu.correct_z_direction(pcd_new["points"])
+                    # OpenCV visualization
+                    target_out = target.squeeze()
+                    target_out = target_out + 1
+                    vis_img = np.zeros((target_out.shape[0], target_out.shape[1], 3), dtype=np.uint8)
 
-                    self.data_visu.publish_occ_map(target_out, res=0.1)
-                    self.data_visu.publish_pc(pc_out)
+                    vis_img[target_out == 0] = (0, 0, 0)  # Unknown
+                    vis_img[target_out == 1] = (0, 255, 0)  # Safe
+                    vis_img[target_out == 2] = (0, 0, 255)  # Unsafe
+
+                    cv2.imshow("img", vis_img)
+                    cv2.waitKey(0)
 
                 # Forward pass
                 pred = self._model(
@@ -86,8 +98,6 @@ class BevTraversability:
                     pcd_new,
                     target.cuda(),
                 )
-
-                # target -= 1     # Shift labels from {0, 1, 2} to {-1, 0, 1}
 
                 # Compute loss
                 mask = (target > -1).float().cuda()
@@ -153,7 +163,6 @@ class BevTraversability:
 
             if save_pred:
                 # x = np.flip(x, axis=0) # Flip to match the image
-
                 torch.save(x, os.path.join(self._data_cfg.data_dir, "pred", f"{j:04d}.pt"))
 
 
@@ -163,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", action="store_true", help="""If set trains""")
     parser.add_argument("-p", action="store_true", help="""If set predicts""")
     parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
-    parser.add_argument('-d', default='t', choices=['t', 'p'], help="""Dataset specified (t: train, p: pred / test)""")
+    parser.add_argument('-d', default='p', choices=['t', 'p'], help="""Dataset specified (t: train, p: pred / test)""")
     args = parser.parse_args()
 
     bt = BevTraversability(args.l)
@@ -179,4 +188,4 @@ if __name__ == "__main__":
     elif args.p:
         bt.predict(load_model=True, save_pred=True)
     else:
-        raise ValueError(f"Unknown mode, please specify -t (for train), -p (for test), -l (for wandb logging)")
+        raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode)")

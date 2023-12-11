@@ -122,8 +122,6 @@ class DemoDataset(torch.utils.data.Dataset):
         )  # Labels and aux labels in BEV space
         if len(self.target_paths) > 0:
             target_np = torch.load(self.target_paths[idx])
-            # Flip along x-axis
-            target_np = np.flip(target_np, axis=0).copy()
             target = torch.from_numpy(target_np).unsqueeze(0)  # (1, 512, 512), for numpy arrays
 
         # target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)

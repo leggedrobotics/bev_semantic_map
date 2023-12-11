@@ -86,12 +86,38 @@ class BevNet(torch.nn.Module):
         if hasattr(self, "pointcloud_backbone"):
             try:
                 # Change x, y, z to y, x, z
-                pcd_new["points"] = pcd_new["points"][:, [1, 0, 2]]
+                # pcd_new["points"] = pcd_new["points"][:, [1, 0, 2]]
+
+                # Input format:
+                # ------ x
+                # |
+                # |
+                # y
 
                 pcd_features = self.pointcloud_backbone(
                     x=pcd_new["points"], batch=pcd_new["batch"], scan=pcd_new["scan"]
                 )
                 pcd_features = torch.nn.functional.interpolate(pcd_features, size=(target_shape[2], target_shape[3]))
+
+                # Output format:
+                # y ------
+                #        |
+                #        |
+                #        x
+
+                # ts.show(pcd_features[0, :25, :, :])
+
+                pcd_features = pcd_features.permute(0, 1, 3, 2)
+
+                # ts.show(pcd_features[0, :25, :, :])
+
+                pcd_features = torch.flip(pcd_features, dims=[2])
+
+                # Transform to:
+                # ------ x
+                # |
+                # |
+                # y
 
                 # Visualize first 25 features for debugging
                 # ts.show(pcd_features[0, :25, :, :])
