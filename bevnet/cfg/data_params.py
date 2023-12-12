@@ -6,7 +6,7 @@ import os
 
 @dataclass
 class DataParams:
-
+    dataset: str = "bevnet"
     mode: str = "train"
 
     # Sensors
@@ -16,9 +16,6 @@ class DataParams:
     # Image
     img_width: int = 640  # 640, 128; 720
     img_height: int = 480  # 480, 128; 540
-
-    # Point cloud
-    nr_points: int = 5000
 
     # Camera parameters
     intrin = [255.8245, 0.0000, 331.4361, 0.0000, 257.1399, 230.8981, 0.0000, 0.0000, 1.0000]  # 640 x 480
@@ -31,7 +28,7 @@ class DataParams:
     grid_map_resolution: float = 0.1
 
     def __post_init__(self):
-        self.data_dir = os.path.join("/home/rschmid/RosBags/bevnet", self.mode)
+        self.data_dir = os.path.join(f"/home/rschmid/RosBags/{self.dataset}", self.mode)
 
 
 data: DataParams = DataParams()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-BEV anomaly detection for safe and unsafe traversability prediction.
+BEVnet for safe and unsafe traversability prediction.
 
 Author: Robin Schmid
 Date: Sep 2023
@@ -9,23 +9,33 @@ Date: Sep 2023
 
 import os
 import cv2
+import time
+import json
 import numpy as np
 import torch
 import wandb
 import argparse
-from tqdm import tqdm
-from icecream import ic
+from dataclasses import asdict
 
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
-from bevnet.network.loss import AnomalyLoss
 from bevnet.dataset import get_bev_dataloader
-from bevnet.utils import Timer
+from bevnet.utils import Timer, DataVisualizer
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
+
+MODEL_NAME = None
+MODEL_NAME = "2023_12_12_13_40_57"
+
+POS_WEIGHT = 0.2  # Num neg / num pos
+THRESHOLD = 0.1
+VISU_DATA = False
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(BASE_DIR, "bevnet", "data")
 
 
 class BevTraversability:
@@ -43,19 +53,36 @@ class BevTraversability:
 
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._run_cfg.lr)
 
-        if self._model_cfg.fusion_backbone == "CNN":
-            self._loss = torch.nn.functional.mse_loss
-        elif self._model_cfg.fusion_backbone == "RNVP":
-            self._loss = AnomalyLoss()
-        elif self._model_cfg.fusion_backbone == "MLP":
-            self._loss = torch.nn.functional.mse_loss
+        self._loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(POS_WEIGHT))
+
+        if VISU_DATA:
+            self.data_visu = DataVisualizer()
 
     def train(self, save_model=False):
         self._model.train()
 
-        data_loader = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
+        model_name = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
 
-        for _ in tqdm(range(self._run_cfg.epochs)):
+        # Create data path
+        if not os.path.exists(os.path.join(DATA_PATH, model_name)):
+            os.makedirs(os.path.join(DATA_PATH, model_name, "config"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "weights"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "pred_train"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "pred_test"))
+
+        # Save configs as json
+        with open(os.path.join(DATA_PATH, model_name, "config", "model_params.json"), 'w') as json_file:
+            json.dump(asdict(self._model_cfg), json_file, indent=2)
+        with open(os.path.join(DATA_PATH, model_name, "config", "run_params.json"), 'w') as json_file:
+            json.dump(asdict(self._run_cfg), json_file, indent=2)
+        with open(os.path.join(DATA_PATH, model_name, "config", "data_params.json"), 'w') as json_file:
+            json.dump(asdict(self._data_cfg), json_file, indent=2)
+
+        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
+
+        num_data = len(data_loader)
+
+        for i in range(self._run_cfg.epochs):
             for j, batch in enumerate(data_loader):
                 imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
                 pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -63,6 +90,28 @@ class BevTraversability:
                     pcd_new["batch"].cuda(),
                     pcd_new["scan"].cuda(),
                 )
+
+                if VISU_DATA:
+                    # ROS visualization
+                    # target_out = target.numpy() + 1
+                    # target_out = target_out.astype(np.uint8).squeeze(1)
+                    #
+                    # pc_out = self.data_visu.correct_z_direction(pcd_new["points"])
+                    #
+                    # self.data_visu.publish_occ_map(target_out, res=0.1)
+                    # self.data_visu.publish_pc(pc_out)
+
+                    # OpenCV visualization
+                    target_out = target.squeeze()
+                    target_out = target_out + 1
+                    vis_img = np.zeros((target_out.shape[0], target_out.shape[1], 3), dtype=np.uint8)
+
+                    vis_img[target_out == 0] = (0, 0, 0)  # Unknown
+                    vis_img[target_out == 1] = (0, 255, 0)  # Safe
+                    vis_img[target_out == 2] = (0, 0, 255)  # Unsafe
+
+                    cv2.imshow("img", vis_img)
+                    cv2.waitKey(0)
 
                 # Forward pass
                 pred = self._model(
@@ -78,14 +127,16 @@ class BevTraversability:
                 )
 
                 # Compute loss
-                if self._model_cfg.fusion_backbone == "CNN":
-                    loss_mean = self._loss(pred, target.cuda().float())
-                elif self._model_cfg.fusion_backbone == "RNVP":
-                    loss_mean, loss_pred = self._loss(pred)
-                elif self._model_cfg.fusion_backbone == "MLP":
-                    loss_mean = self._loss(pred, target.cuda().float().reshape(-1, 1))
+                mask = (target > -1).float().cuda()
+                loss = self._loss(pred, target.cuda())
+                loss = loss * mask
+                num_pixels = mask.sum()
+                if num_pixels > 0:
+                    loss_mean = loss.sum() / num_pixels  # Average loss over all non-background pixels
+                else:
+                    loss_mean = torch.tensor(0.0)  # Avoid division by zero if there are no non-background pixels
 
-                print(f"{j} | {loss_mean.item():.5f}")
+                print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")
 
                 if self.wandb_logging:
                     wandb.log({"train_loss": loss_mean.item()})
@@ -97,22 +148,38 @@ class BevTraversability:
 
             if save_model:
                 print("Saving model ...")
-                torch.save(self._model.state_dict(), "bevnet/weights/bevnet.pth")
+                torch.save(self._model.state_dict(),
+                           os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"))
 
-    def predict(self, load_model=True, model_name="bevnet", save_pred=False):
+    def predict(self, load_model=True, model_name=None, save_pred=False):
         if load_model:
             self._model.to(DEVICE)
+
+            # If no specific name is given load the latest model
+            if model_name is None:
+                all_directories = [d for d in os.listdir(DATA_PATH) if
+                                   os.path.isdir(os.path.join(DATA_PATH, d))]
+                sorted_directories = sorted(all_directories)
+                model_name = sorted_directories[-1]
+
+            print(f"Using model from {model_name}")
+
             try:
                 self._model.load_state_dict(
-                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)), strict=True
+                    torch.load(
+                        os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"),
+                        map_location=torch.device(DEVICE)), strict=True
                 )
             except:
                 ValueError("This model configuration does not exist!")
 
-            # Set the model to evaluation mode
-            self._model.eval()  # TODO: turning this on causes different output
+            if not os.path.exists(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}")):
+                os.makedirs(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}"))
 
-        data_loader = get_bev_dataloader(mode="test", batch_size=1)
+            # Set the model to evaluation mode
+            self._model.eval()
+
+        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=TEST_DATASET, batch_size=1)
         for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -134,23 +201,11 @@ class BevTraversability:
                         pcd_new,
                     )
 
-            # Compute loss
-            if self._model_cfg.fusion_backbone == "RNVP":
-                _, x = self._loss(pred)
-            else:
-                x = pred
-
-            # Normalize
-            x = x.cpu().detach().numpy()
-            sz = int(x.size ** 0.5)
-            x = x.reshape(sz, sz)
-            pred_out = cv2.normalize(x, None, 0, 255, cv2.NORM_MINMAX)
+            # Apply sigmoid and convert to NumPy array
+            x = torch.sigmoid(pred).squeeze().cpu().detach().numpy()
 
             if save_pred:
-                cv2.imwrite(os.path.join(os.path.split(self._data_cfg.data_dir)[0], "pred", f"{j}.jpg"), pred_out)
-
-                if self.wandb_logging:
-                    wandb.log({"prediction": wandb.Image(pred_out)})
+                torch.save(x, os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}", f"{j:04d}.pt"))
 
 
 if __name__ == "__main__":
@@ -159,14 +214,20 @@ if __name__ == "__main__":
     parser.add_argument("-t", action="store_true", help="""If set trains""")
     parser.add_argument("-p", action="store_true", help="""If set predicts""")
     parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
+    parser.add_argument('-d', default='p', choices=['t', 'p'], help="""Dataset specified (t: train, p: pred / test)""")
     args = parser.parse_args()
 
     bt = BevTraversability(args.l)
+
+    if args.d == 't':
+        TEST_DATASET = "train"
+    else:
+        TEST_DATASET = "test"
 
     # Setting training mode
     if args.t:
         bt.train(save_model=True)
     elif args.p:
-        bt.predict(load_model=True, save_pred=True)
+        bt.predict(load_model=True, model_name=MODEL_NAME, save_pred=True)
     else:
-        raise ValueError(f"Unknown mode, please specify -t (for train), -p (for test), -l (for wandb logging)")
+        raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode)")

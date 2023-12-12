@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field, asdict
 from typing import Tuple, Dict, List, Optional, Any
-import torch
 
 
 @dataclass
@@ -14,24 +13,6 @@ class ModelParams:
     @dataclass
     class CNNParams:
         output_channels: int = 1
-        apply_sigmoid: List[bool] = field(default_factory=lambda: [True])
-
-    @dataclass
-    class RealNVPParams:
-        coupling_topology: List[int] = field(default_factory=lambda: [200])
-        flow_n: int = 20
-        batch_norm: bool = True
-        mask_type: str = "odds"    # "odds", "even"
-        conditioning_size: int = 0
-        use_permutation: bool = True
-        single_function: bool = True
-
-    @dataclass
-    class MLPParams:
-        hidden_sizes: List[int] = field(
-            default_factory=lambda: [256, 32, 1]
-        )
-        reconstruction: bool = False
 
     @dataclass
     class LiftSplatShootNetParams:
@@ -78,19 +59,15 @@ class ModelParams:
     point_pillars: PointPillarsParams = PointPillarsParams()
     fusion_net = FusionNetParams()
 
-    # image_backbone: str = "lift_splat_shoot_net"  # If skip, set to "skip"
-    image_backbone: str = "skip"  # If skip, set to "skip"
-    pointcloud_backbone: str = "point_pillars"  # If skip, set to "skip"
-    # pointcloud_backbone: str = "skip"  # If skip, set to "skip"
-    fusion_backbone: str = "RNVP"  # "CNN", "RNVP" or "MLP"
+    # image_backbone: str = "lift_splat_shoot_net"  # "lift_splat_shoot_net" or "skip
+    image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
+    pointcloud_backbone: str = "point_pillars"   # "point_pillars" or "skip"
+    # pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
+    fusion_backbone: str = "CNN"    # "CNN" or "skip"
 
     def __post_init__(self):
-        if self.fusion_backbone == "CNN":
+        if self.fusion_backbone != "skip":
             self.fusion_net = self.CNNParams()
-        elif self.fusion_backbone == "RNVP":
-            self.fusion_net = self.RealNVPParams()
-        elif self.fusion_backbone == "MLP":
-            self.fusion_net = self.MLPParams()
 
 
 # Do not change below here

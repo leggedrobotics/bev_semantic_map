@@ -1,6 +1,14 @@
-import torch
-from PIL import Image
+#!/usr/bin/env python
+
+"""
+Demo dataset for testing BEVNet.
+
+Author: Robin Schmid
+Date: Sep 2023
+"""
+
 import cv2
+import torch
 import numpy as np
 import os
 import glob
@@ -16,8 +24,10 @@ class DemoDataset(torch.utils.data.Dataset):
         self.cfg_data = cfg_data
 
         self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
-        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd", "*")))
-        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "mask", "*")))
+        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
+        # self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
+        # self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "mask", "*")))
+        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_label", "*")))
 
     def __len__(self):
         # return self.cfg_data.nr_data
@@ -67,7 +77,6 @@ class DemoDataset(torch.utils.data.Dataset):
         )
 
     def get_raw_pcd_data(self, idx):
-        # TODO: read point cloud in base frame
         # H_pc_cam = [*self.cfg_data.trans_base_cam, *self.cfg_data.rot_base_cam]
         pcd_new = {}
         pcd_new["points"] = []
@@ -111,7 +120,11 @@ class DemoDataset(torch.utils.data.Dataset):
             torch.zeros(self.cfg_data.target_shape),
             torch.zeros(self.cfg_data.aux_shape),
         )  # Labels and aux labels in BEV space
-        target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)
+        if len(self.target_paths) > 0:
+            target_np = torch.load(self.target_paths[idx])
+            target = torch.from_numpy(target_np).unsqueeze(0)  # (1, 512, 512), for numpy arrays
+
+        # target = torch.load(self.target_paths[idx]).unsqueeze(0)    # (1, 512, 512)
 
         # Get dummy image for debugging
         # target = self.get_dummy_target(
@@ -166,12 +179,11 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
 
 
 def get_bev_dataloader(mode="train", batch_size=1):
-
     data_cfg = DataParams(mode=mode)
     dataset = DemoDataset(data_cfg)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
 
-    return data_loader
+    return data_loader, data_cfg.data_dir
 
 
 if __name__ == "__main__":

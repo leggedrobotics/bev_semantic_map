@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(dynamic_params)
+project(dynamic_params_bev)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS

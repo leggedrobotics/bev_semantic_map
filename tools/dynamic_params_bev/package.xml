@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>dynamic_params</name>
+  <name>dynamic_params_bev</name>
   <version>0.0.0</version>
   <description>Dynamic reconfigure template with Python</description>
   <maintainer email="schmirob@ethz.ch">Robin Schmid</maintainer>
