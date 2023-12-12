@@ -200,7 +200,7 @@ if __name__ == "__main__":
             label = label[np.newaxis, ...].astype(np.uint8) # Shape: (1, H, W)
 
             # Flip around x axis
-            label = np.flip(label, axis=1)
+            # label = np.flip(label, axis=1)
 
             vis.occupancy_map_arr(label, RESOLUTION, x=0, y=0)
 

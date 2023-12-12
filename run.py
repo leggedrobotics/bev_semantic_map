@@ -28,7 +28,7 @@ np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
 MODEL_NAME = None
-MODEL_NAME = "2023_12_12_13_40_57"
+MODEL_NAME = "2023_12_12_17_43_05"
 
 POS_WEIGHT = 0.2  # Num neg / num pos
 THRESHOLD = 0.1
