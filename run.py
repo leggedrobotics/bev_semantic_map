@@ -27,6 +27,9 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
+MODEL_NAME = None
+MODEL_NAME = "2023_12_12_13_40_57"
+
 POS_WEIGHT = 0.2  # Num neg / num pos
 THRESHOLD = 0.1
 VISU_DATA = False
@@ -159,7 +162,7 @@ class BevTraversability:
                 sorted_directories = sorted(all_directories)
                 model_name = sorted_directories[-1]
 
-            print(f"Using model {model_name}")
+            print(f"Using model from {model_name}")
 
             try:
                 self._model.load_state_dict(
@@ -225,6 +228,6 @@ if __name__ == "__main__":
     if args.t:
         bt.train(save_model=True)
     elif args.p:
-        bt.predict(load_model=True, model_name=None, save_pred=True)
+        bt.predict(load_model=True, model_name=MODEL_NAME, save_pred=True)
     else:
         raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode)")
