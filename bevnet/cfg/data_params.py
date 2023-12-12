@@ -3,11 +3,10 @@ from typing import Tuple, Dict, List, Optional, Any
 import torch
 import os
 
-DATASET = "bevnet"
-
 
 @dataclass
 class DataParams:
+    dataset: str = "bevnet"
     mode: str = "train"
 
     # Sensors
@@ -29,7 +28,7 @@ class DataParams:
     grid_map_resolution: float = 0.1
 
     def __post_init__(self):
-        self.data_dir = os.path.join(f"/home/rschmid/RosBags/{DATASET}", self.mode)
+        self.data_dir = os.path.join(f"/home/rschmid/RosBags/{self.dataset}", self.mode)
 
 
 data: DataParams = DataParams()

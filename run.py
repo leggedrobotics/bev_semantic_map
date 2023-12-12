@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-BEV anomaly detection for safe and unsafe traversability prediction.
+BEVnet for safe and unsafe traversability prediction.
 
 Author: Robin Schmid
 Date: Sep 2023
@@ -9,11 +9,13 @@ Date: Sep 2023
 
 import os
 import cv2
+import time
+import json
 import numpy as np
 import torch
 import wandb
 import argparse
-from tqdm import tqdm
+from dataclasses import asdict
 
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
@@ -28,6 +30,9 @@ torch.set_printoptions(edgeitems=200)
 POS_WEIGHT = 0.2  # Num neg / num pos
 THRESHOLD = 0.1
 VISU_DATA = False
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(BASE_DIR, "bevnet", "data")
 
 
 class BevTraversability:
@@ -50,12 +55,31 @@ class BevTraversability:
         if VISU_DATA:
             self.data_visu = DataVisualizer()
 
-    def train(self, save_model=False, model_name="bevnet"):
+    def train(self, save_model=False):
         self._model.train()
+
+        model_name = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
+
+        # Create data path
+        if not os.path.exists(os.path.join(DATA_PATH, model_name)):
+            os.makedirs(os.path.join(DATA_PATH, model_name, "config"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "weights"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "pred_train"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "pred_test"))
+
+        # Save configs as json
+        with open(os.path.join(DATA_PATH, model_name, "config", "model_params.json"), 'w') as json_file:
+            json.dump(asdict(self._model_cfg), json_file, indent=2)
+        with open(os.path.join(DATA_PATH, model_name, "config", "run_params.json"), 'w') as json_file:
+            json.dump(asdict(self._run_cfg), json_file, indent=2)
+        with open(os.path.join(DATA_PATH, model_name, "config", "data_params.json"), 'w') as json_file:
+            json.dump(asdict(self._data_cfg), json_file, indent=2)
 
         data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
 
-        for _ in tqdm(range(self._run_cfg.epochs)):
+        num_data = len(data_loader)
+
+        for i in range(self._run_cfg.epochs):
             for j, batch in enumerate(data_loader):
                 imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
                 pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -109,7 +133,7 @@ class BevTraversability:
                 else:
                     loss_mean = torch.tensor(0.0)  # Avoid division by zero if there are no non-background pixels
 
-                print(f"{j} | {loss_mean.item():.9f}")
+                print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")
 
                 if self.wandb_logging:
                     wandb.log({"train_loss": loss_mean.item()})
@@ -121,17 +145,33 @@ class BevTraversability:
 
             if save_model:
                 print("Saving model ...")
-                torch.save(self._model.state_dict(), f"bevnet/weights/{model_name}.pth")
+                torch.save(self._model.state_dict(),
+                           os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"))
 
-    def predict(self, load_model=True, model_name="bevnet", save_pred=False):
+    def predict(self, load_model=True, model_name=None, save_pred=False):
         if load_model:
             self._model.to(DEVICE)
+
+            # If no specific name is given load the latest model
+            if model_name is None:
+                all_directories = [d for d in os.listdir(DATA_PATH) if
+                                   os.path.isdir(os.path.join(DATA_PATH, d))]
+                sorted_directories = sorted(all_directories)
+                model_name = sorted_directories[-1]
+
+            print(f"Using model {model_name}")
+
             try:
                 self._model.load_state_dict(
-                    torch.load(f"bevnet/weights/{model_name}.pth", map_location=torch.device(DEVICE)), strict=True
+                    torch.load(
+                        os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"),
+                        map_location=torch.device(DEVICE)), strict=True
                 )
             except:
                 ValueError("This model configuration does not exist!")
+
+            if not os.path.exists(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}")):
+                os.makedirs(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}"))
 
             # Set the model to evaluation mode
             self._model.eval()
@@ -162,8 +202,7 @@ class BevTraversability:
             x = torch.sigmoid(pred).squeeze().cpu().detach().numpy()
 
             if save_pred:
-                # x = np.flip(x, axis=0) # Flip to match the image
-                torch.save(x, os.path.join(self._data_cfg.data_dir, "pred", f"{j:04d}.pt"))
+                torch.save(x, os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}", f"{j:04d}.pt"))
 
 
 if __name__ == "__main__":
@@ -186,6 +225,6 @@ if __name__ == "__main__":
     if args.t:
         bt.train(save_model=True)
     elif args.p:
-        bt.predict(load_model=True, save_pred=True)
+        bt.predict(load_model=True, model_name=None, save_pred=True)
     else:
         raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode)")
