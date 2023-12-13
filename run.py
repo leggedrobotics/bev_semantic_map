@@ -28,9 +28,9 @@ np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
 MODEL_NAME = None
-MODEL_NAME = "2023_12_12_17_43_05"
+MODEL_NAME = "2023_12_13_10_18_13"
 
-POS_WEIGHT = 0.2  # Num neg / num pos
+POS_WEIGHT = 0.1  # Num neg / num pos, from data around 0.08
 THRESHOLD = 0.1
 VISU_DATA = False
 
@@ -82,6 +82,8 @@ class BevTraversability:
 
         num_data = len(data_loader)
 
+        # num_all, num_0, num_1, num_2 = 0, 0, 0, 0
+
         for i in range(self._run_cfg.epochs):
             for j, batch in enumerate(data_loader):
                 imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
@@ -90,6 +92,12 @@ class BevTraversability:
                     pcd_new["batch"].cuda(),
                     pcd_new["scan"].cuda(),
                 )
+
+                # target_count = target.squeeze().numpy() + 1
+                # num_0 += np.sum(target_count == 0)
+                # num_1 += np.sum(target_count == 1)
+                # num_2 += np.sum(target_count == 2)
+                # num_all = (num_0 + num_1 + num_2)
 
                 if VISU_DATA:
                     # ROS visualization
@@ -146,12 +154,17 @@ class BevTraversability:
                 loss_mean.backward()
                 self._optimizer.step()
 
+            # print("0", num_0 / num_all) # 0.48
+            # print("1", num_1 / num_all) # 0.48
+            # print("2", num_2 / num_all) # 0.04
+            # print("2 / 1", num_2 / num_1) # 0.08
+
             if save_model:
-                print("Saving model ...")
+                print(f"Saving model ... {model_name}")
                 torch.save(self._model.state_dict(),
                            os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"))
 
-    def predict(self, load_model=True, model_name=None, save_pred=False):
+    def predict(self, load_model=True, model_name=None, save_pred=False, test_dataset=None):
         if load_model:
             self._model.to(DEVICE)
 
@@ -173,13 +186,13 @@ class BevTraversability:
             except:
                 ValueError("This model configuration does not exist!")
 
-            if not os.path.exists(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}")):
-                os.makedirs(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}"))
+            if not os.path.exists(os.path.join(DATA_PATH, model_name, f"pred_{test_dataset}")):
+                os.makedirs(os.path.join(DATA_PATH, model_name, f"pred_{test_dataset}"))
 
             # Set the model to evaluation mode
             self._model.eval()
 
-        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=TEST_DATASET, batch_size=1)
+        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=test_dataset, batch_size=1)
         for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -205,7 +218,7 @@ class BevTraversability:
             x = torch.sigmoid(pred).squeeze().cpu().detach().numpy()
 
             if save_pred:
-                torch.save(x, os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}", f"{j:04d}.pt"))
+                torch.save(x, os.path.join(DATA_PATH, model_name, f"pred_{test_dataset}", f"{j:04d}.pt"))
 
 
 if __name__ == "__main__":
@@ -214,20 +227,24 @@ if __name__ == "__main__":
     parser.add_argument("-t", action="store_true", help="""If set trains""")
     parser.add_argument("-p", action="store_true", help="""If set predicts""")
     parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
-    parser.add_argument('-d', default='p', choices=['t', 'p'], help="""Dataset specified (t: train, p: pred / test)""")
+    parser.add_argument('-d', default='p', choices=['t', 'p', 'b'],
+                        help="""Dataset specified (t: train, p: pred / test, b: both)""")
     args = parser.parse_args()
 
     bt = BevTraversability(args.l)
 
     if args.d == 't':
-        TEST_DATASET = "train"
+        TEST_DATASETS = ["train"]
+    elif args.d == 'p':
+        TEST_DATASETS = ["test"]
     else:
-        TEST_DATASET = "test"
+        TEST_DATASETS = ["train", "test"]
 
     # Setting training mode
     if args.t:
         bt.train(save_model=True)
     elif args.p:
-        bt.predict(load_model=True, model_name=MODEL_NAME, save_pred=True)
+        for TEST_DATASET in TEST_DATASETS:
+            bt.predict(load_model=True, model_name=MODEL_NAME, save_pred=True, test_dataset=TEST_DATASET)
     else:
         raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode)")
