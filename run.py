@@ -28,9 +28,9 @@ np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
 MODEL_NAME = None
-MODEL_NAME = "2023_12_13_10_18_13"
+# MODEL_NAME = "2023_12_13_10_43_22"
 
-POS_WEIGHT = 0.1  # Num neg / num pos, from data around 0.08
+POS_WEIGHT = 10  # Num neg / num pos, from data around 0.08
 THRESHOLD = 0.1
 VISU_DATA = False
 
@@ -51,7 +51,7 @@ class BevTraversability:
         if self.wandb_logging:
             wandb.init(project=self._run_cfg.log_name)
 
-        self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._run_cfg.lr)
+        self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=self._run_cfg.lr)
 
         self._loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(POS_WEIGHT))
 
@@ -134,15 +134,23 @@ class BevTraversability:
                     target.cuda(),
                 )
 
+                pred = torch.sigmoid(pred).float()
+                target = target.float()
+
                 # Compute loss
                 mask = (target > -1).float().cuda()
-                loss = self._loss(pred, target.cuda())
+
+                loss = torch.nn.functional.mse_loss(pred, target.cuda(), reduction="none")
+
+                # loss = self._loss(pred, target.cuda())
+
                 loss = loss * mask
                 num_pixels = mask.sum()
+
                 if num_pixels > 0:
                     loss_mean = loss.sum() / num_pixels  # Average loss over all non-background pixels
-                else:
-                    loss_mean = torch.tensor(0.0)  # Avoid division by zero if there are no non-background pixels
+
+                # loss_mean = loss_mean.float()
 
                 print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")
 

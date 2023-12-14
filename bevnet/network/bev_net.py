@@ -85,8 +85,6 @@ class BevNet(torch.nn.Module):
         features = []
         if hasattr(self, "pointcloud_backbone"):
             try:
-                # Change x, y, z to y, x, z
-                # pcd_new["points"] = pcd_new["points"][:, [1, 0, 2]]
 
                 # Input format:
                 # ------ x
