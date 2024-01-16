@@ -12,13 +12,14 @@ import numpy as np
 import os
 import glob
 from bevnet.dataset import normalize_img
-from bevnet.cfg import DataParams
+from bevnet.cfg import DataParams, RunParams
 from scipy.spatial.transform import Rotation as R
 
 class DemoDataset(torch.utils.data.Dataset):
-    def __init__(self, cfg_data: DataParams):
+    def __init__(self, cfg_data: DataParams, cfg_run: RunParams):
         super(DemoDataset, self).__init__()
         self.cfg_data = cfg_data
+        self.cfg_run = cfg_run
 
         self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
         self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
@@ -28,7 +29,11 @@ class DemoDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         # return self.cfg_data.nr_data
-        return len(self.img_paths)
+        # return len(self.img_paths)
+        if self.cfg_run.nr_data < 0:
+            return len(self.img_paths)
+        else:
+            return self.cfg_run.nr_data
 
     def get_image_data(self, idx):
         imgs = []
@@ -179,7 +184,8 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
 
 def get_bev_dataloader(mode="train", batch_size=1, shuffle=False):
     data_cfg = DataParams(mode=mode)
-    dataset = DemoDataset(data_cfg)
+    run_cfg = RunParams()
+    dataset = DemoDataset(data_cfg, run_cfg)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=shuffle)
 
     return data_loader, data_cfg.data_dir

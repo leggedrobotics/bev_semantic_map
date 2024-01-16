@@ -16,11 +16,14 @@ import torch
 import wandb
 import argparse
 from dataclasses import asdict
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
-from bevnet.utils import Timer #, DataVisualizer
+from bevnet.utils import Timer
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,7 +35,7 @@ MODEL_NAME = None
 
 POS_WEIGHT = 10  # Num neg / num pos, from data around 0.08
 THRESHOLD = 0.1
-VISU_DATA = False
+VISU_DATA = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "bevnet", "data")
@@ -55,9 +58,6 @@ class BevTraversability:
 
         self._loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9]), ignore_index=-1)
         self._loss.cuda()
-        if VISU_DATA:
-            from bevnet.utils import DataVisualizer
-            self.data_visu = DataVisualizer()
 
     def train(self, save_model=False):
         self._model.train()
@@ -70,6 +70,7 @@ class BevTraversability:
             os.makedirs(os.path.join(DATA_PATH, model_name, "weights"))
             os.makedirs(os.path.join(DATA_PATH, model_name, "pred_train"))
             os.makedirs(os.path.join(DATA_PATH, model_name, "pred_test"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "pred_train_epochs"))
 
         # Save configs as json
         with open(os.path.join(DATA_PATH, model_name, "config", "model_params.json"), 'w') as json_file:
@@ -79,11 +80,9 @@ class BevTraversability:
         with open(os.path.join(DATA_PATH, model_name, "config", "data_params.json"), 'w') as json_file:
             json.dump(asdict(self._data_cfg), json_file, indent=2)
 
-        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=True)
+        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=False)
 
         num_data = len(data_loader)
-
-        # num_all, num_0, num_1, num_2 = 0, 0, 0, 0
 
         for i in range(self._run_cfg.epochs):
             for j, batch in enumerate(data_loader):
@@ -93,34 +92,6 @@ class BevTraversability:
                     pcd_new["batch"].cuda(),
                     pcd_new["scan"].cuda(),
                 )
-
-                # target_count = target.squeeze().numpy() + 1
-                # num_0 += np.sum(target_count == 0)
-                # num_1 += np.sum(target_count == 1)
-                # num_2 += np.sum(target_count == 2)
-                # num_all = (num_0 + num_1 + num_2)
-
-                if VISU_DATA:
-                    # ROS visualization
-                    # target_out = target.numpy() + 1
-                    # target_out = target_out.astype(np.uint8).squeeze(1)
-                    #
-                    # pc_out = self.data_visu.correct_z_direction(pcd_new["points"])
-                    #
-                    # self.data_visu.publish_occ_map(target_out, res=0.1)
-                    # self.data_visu.publish_pc(pc_out)
-
-                    # OpenCV visualization
-                    target_out = target.squeeze()
-                    target_out = target_out + 1
-                    vis_img = np.zeros((target_out.shape[0], target_out.shape[1], 3), dtype=np.uint8)
-
-                    vis_img[target_out == 0] = (0, 0, 0)  # Unknown
-                    vis_img[target_out == 1] = (0, 255, 0)  # Safe
-                    vis_img[target_out == 2] = (0, 0, 255)  # Unsafe
-
-                    cv2.imshow("img", vis_img)
-                    cv2.waitKey(0)
 
                 # Forward pass
                 pred = self._model(
@@ -136,15 +107,9 @@ class BevTraversability:
                 )
 
                 pred = pred.softmax(dim=1).float()
-                
-                # pred = pred.float()
                 target = target.float()
 
-                if 1:
-                    import matplotlib.pyplot as plt
-                    import numpy as np
-                    import seaborn as sns
-
+                if VISU_DATA:
                     # Convert tensors to numpy arrays
                     pred_np = pred.clone().squeeze().cpu().detach().numpy()
                     target_np = target.clone().squeeze().cpu().detach().numpy()
@@ -164,7 +129,7 @@ class BevTraversability:
                     plt.figure(figsize=(10, 5))
                     plt.subplot(1, 2, 1)
                     b = 0
-                    plt.imshow(pred_np[b,1], cmap='coolwarm', vmin=v_min, vmax=v_max)
+                    plt.imshow(pred_np[b, 1], cmap='coolwarm', vmin=v_min, vmax=v_max)
                     plt.title('Pred')
                     plt.colorbar()
 
@@ -174,24 +139,13 @@ class BevTraversability:
                     plt.colorbar()
 
                     # Save to disk
-                    plt.savefig(os.path.join(DATA_PATH, model_name, f'{i}_pred_target.png') )
+                    plt.savefig(os.path.join(DATA_PATH, model_name, "pred_train_epochs",
+                                             f'{i}.png') )
                     plt.close()
-                    
-
 
                 # Compute loss
-                # mask = (target > -1).float().cuda()
-
-                # loss = torch.nn.functional.mse_loss(pred, target.cuda(), reduction="none")
                 target = target.long().cuda()
-                # target[target == -1] = 2
-                loss_mean = self._loss(pred, target[:,0,:,:])
-
-                #loss = loss * mask
-                #num_pixels = mask.sum()
-                #if num_pixels > 0:
-                #    loss_mean = loss.sum() / num_pixels  # Average loss over all non-background pixels
-                # loss_mean = loss_mean.float()
+                loss_mean = self._loss(pred, target[:, 0, :, :])
 
                 print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")
 
@@ -202,11 +156,6 @@ class BevTraversability:
                 self._optimizer.zero_grad()
                 loss_mean.backward()
                 self._optimizer.step()
-
-            # print("0", num_0 / num_all) # 0.48
-            # print("1", num_1 / num_all) # 0.48
-            # print("2", num_2 / num_all) # 0.04
-            # print("2 / 1", num_2 / num_1) # 0.08
 
             if save_model:
                 print(f"Saving model ... {model_name}")
