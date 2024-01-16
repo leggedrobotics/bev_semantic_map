@@ -12,7 +12,7 @@ class ModelParams:
 
     @dataclass
     class CNNParams:
-        output_channels: int = 1
+        output_channels: int = 2
 
     @dataclass
     class LiftSplatShootNetParams:
@@ -47,7 +47,7 @@ class ModelParams:
 
     @dataclass
     class PointPillarsParams:
-        voxel_size: List[float] = field(default_factory=lambda: [0.1, 0.1, 1.0])  # [0.2, 0.2, 1.0]
+        voxel_size: List[float] = field(default_factory=lambda: [0.1, 0.1, 4.0])  # [0.2, 0.2, 1.0]
         point_cloud_range: List[float] = field(
             default_factory=lambda: [-3.2, -3.2, -2.0, 3.2, 3.2, 2.0]
         )  # [-51.2, -51.2, -10, 51.2, 51.2, 10]

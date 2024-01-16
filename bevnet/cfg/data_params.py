@@ -6,7 +6,7 @@ import os
 
 @dataclass
 class DataParams:
-    dataset: str = "bevnet"
+    dataset: str = "debug_dataset"
     # dataset: str = "single_data"
     mode: str = "train"
 
@@ -29,7 +29,7 @@ class DataParams:
     grid_map_resolution: float = 0.1
 
     def __post_init__(self):
-        self.data_dir = os.path.join(f"/home/rschmid/RosBags/{self.dataset}", self.mode)
+        self.data_dir = os.path.join(f"/Data/bev_anymal/{self.dataset}", self.mode)
 
 
 data: DataParams = DataParams()

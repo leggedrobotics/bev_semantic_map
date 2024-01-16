@@ -20,7 +20,7 @@ from dataclasses import asdict
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
-from bevnet.utils import Timer, DataVisualizer
+from bevnet.utils import Timer #, DataVisualizer
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,9 +53,10 @@ class BevTraversability:
 
         self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=self._run_cfg.lr)
 
-        self._loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(POS_WEIGHT))
-
+        self._loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9]), ignore_index=-1)
+        self._loss.cuda()
         if VISU_DATA:
+            from bevnet.utils import DataVisualizer
             self.data_visu = DataVisualizer()
 
     def train(self, save_model=False):
@@ -78,7 +79,7 @@ class BevTraversability:
         with open(os.path.join(DATA_PATH, model_name, "config", "data_params.json"), 'w') as json_file:
             json.dump(asdict(self._data_cfg), json_file, indent=2)
 
-        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
+        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=True)
 
         num_data = len(data_loader)
 
@@ -134,22 +135,62 @@ class BevTraversability:
                     target.cuda(),
                 )
 
-                pred = torch.sigmoid(pred).float()
+                pred = pred.softmax(dim=1).float()
+                
+                # pred = pred.float()
                 target = target.float()
 
+                if 1:
+                    import matplotlib.pyplot as plt
+                    import numpy as np
+                    import seaborn as sns
+
+                    # Convert tensors to numpy arrays
+                    pred_np = pred.clone().squeeze().cpu().detach().numpy()
+                    target_np = target.clone().squeeze().cpu().detach().numpy()
+
+                    # Normalize between v_min and v_max
+                    v_min, v_max = 0, 1
+
+                    # Replace -1 with np.nan
+                    pred_np[pred_np == -1] = np.nan
+                    target_np[target_np == -1] = np.nan
+
+                    cmap = sns.color_palette("RdYlBu", as_cmap=True)
+
+                    cmap.set_bad(color="black")
+
+                    # Plot images side by side
+                    plt.figure(figsize=(10, 5))
+                    plt.subplot(1, 2, 1)
+                    b = 0
+                    plt.imshow(pred_np[b,1], cmap='coolwarm', vmin=v_min, vmax=v_max)
+                    plt.title('Pred')
+                    plt.colorbar()
+
+                    plt.subplot(1, 2, 2)
+                    plt.imshow(target_np[b], cmap='coolwarm', vmin=v_min, vmax=v_max)
+                    plt.title('Target')
+                    plt.colorbar()
+
+                    # Save to disk
+                    plt.savefig(os.path.join(DATA_PATH, model_name, f'{i}_pred_target.png') )
+                    plt.close()
+                    
+
+
                 # Compute loss
-                mask = (target > -1).float().cuda()
+                # mask = (target > -1).float().cuda()
 
-                loss = torch.nn.functional.mse_loss(pred, target.cuda(), reduction="none")
+                # loss = torch.nn.functional.mse_loss(pred, target.cuda(), reduction="none")
+                target = target.long().cuda()
+                # target[target == -1] = 2
+                loss_mean = self._loss(pred, target[:,0,:,:])
 
-                # loss = self._loss(pred, target.cuda())
-
-                loss = loss * mask
-                num_pixels = mask.sum()
-
-                if num_pixels > 0:
-                    loss_mean = loss.sum() / num_pixels  # Average loss over all non-background pixels
-
+                #loss = loss * mask
+                #num_pixels = mask.sum()
+                #if num_pixels > 0:
+                #    loss_mean = loss.sum() / num_pixels  # Average loss over all non-background pixels
                 # loss_mean = loss_mean.float()
 
                 print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")

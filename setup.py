@@ -17,11 +17,8 @@ INSTALL_REQUIRES = [
     "wandb",
     "icecream",
     "torchshow",
- #   "seaborn",
- #   "pandas",
- #   "scipy",
- #   "scikit-image",
- #   "scikit-learn",
+
+    "scipy",
     "pytictac",
 ]
 
