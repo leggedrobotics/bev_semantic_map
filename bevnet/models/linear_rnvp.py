@@ -4,7 +4,6 @@ from abc import abstractmethod, ABC
 import torch
 from torch import nn, distributions
 import numpy as np
-from torch_geometric.data import Data
 
 
 class LinearBatchNorm(nn.Module):

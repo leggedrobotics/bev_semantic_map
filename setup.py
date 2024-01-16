@@ -3,6 +3,27 @@ import torch
 from setuptools import find_packages, setup
 from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension
 
+INSTALL_REQUIRES = [
+    # generic
+    "numpy",
+    "tqdm",
+    "pip",
+    "torchvision",
+    "torch@https://download.pytorch.org/whl/torch-2.1.0+cu121-cp38-cp38-linux_x86_64.whl",
+    "torchmetrics",
+    "matplotlib",
+    "efficientnet-pytorch",
+    "opencv-python>=4.6",
+    "wandb",
+    "icecream",
+    "torchshow",
+ #   "seaborn",
+ #   "pandas",
+ #   "scipy",
+ #   "scikit-image",
+ #   "scikit-learn",
+    "pytictac",
+]
 
 def make_cuda_ext(name, module, sources, sources_cuda=[], extra_args=[], extra_include_path=[]):
 
@@ -62,4 +83,5 @@ if __name__ == "__main__":
         ],
         cmdclass={"build_ext": BuildExtension},
         zip_safe=False,
+        install_requires=[INSTALL_REQUIRES],
     )

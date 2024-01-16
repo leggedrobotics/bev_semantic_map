@@ -15,7 +15,7 @@ import glob
 from bevnet.dataset import normalize_img
 from bevnet.cfg import DataParams
 
-from tf.transformations import quaternion_matrix
+# from tf.transformations import quaternion_matrix
 
 
 class DemoDataset(torch.utils.data.Dataset):
@@ -57,6 +57,8 @@ class DemoDataset(torch.utils.data.Dataset):
             intrins.append(intrin)
 
             H_base_camera = torch.eye(4)  # 4d tensor for tf from base to camera frame
+
+            raise ValueError("removed the quaternion_matrix import we can maybe replease with sklearn Rotation but need to check convention to be correct")
             H_base_camera[:3, :3] = torch.from_numpy(quaternion_matrix(np.array(self.cfg_data.rot_base_cam))[:3, :3])
             H_base_camera[:3, 3] = torch.from_numpy(np.array(self.cfg_data.trans_base_cam))
             rots.append(H_base_camera[:3, :3])
@@ -97,6 +99,7 @@ class DemoDataset(torch.utils.data.Dataset):
     def project_pc(self, pc, pose):
         # Transform points to frame
         position = np.array(pose[:3])
+        raise ValueError("removed the quaternion_matrix import we can maybe replease with sklearn Rotation but need to check convention to be correct")
         R = np.array(quaternion_matrix(pose[3:]))
 
         points_list = []
