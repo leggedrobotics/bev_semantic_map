@@ -30,7 +30,7 @@ class DemoDataset(torch.utils.data.Dataset):
     def __len__(self):
         # return self.cfg_data.nr_data
         # return len(self.img_paths)
-        if self.cfg_run.nr_data < 0:
+        if self.cfg_run.nr_data < 0 or self.cfg_data.mode != "train":
             return len(self.img_paths)
         else:
             return self.cfg_run.nr_data

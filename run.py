@@ -80,7 +80,7 @@ class BevTraversability:
         with open(os.path.join(DATA_PATH, model_name, "config", "data_params.json"), 'w') as json_file:
             json.dump(asdict(self._data_cfg), json_file, indent=2)
 
-        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=False)
+        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=True)
 
         num_data = len(data_loader)
 
@@ -109,43 +109,8 @@ class BevTraversability:
                 pred = pred.softmax(dim=1).float()
                 target = target.float()
 
-                if VISU_DATA:
-                    # Convert tensors to numpy arrays
-                    pred_np = pred.clone().squeeze().cpu().detach().numpy()
-                    target_np = target.clone().squeeze().cpu().detach().numpy()
-
-                    # Normalize between v_min and v_max
-                    v_min, v_max = 0, 1
-
-                    # Replace -1 with np.nan
-                    pred_np[pred_np == -1] = np.nan
-                    target_np[target_np == -1] = np.nan
-
-                    cmap = sns.color_palette("RdYlBu", as_cmap=True)
-
-                    cmap.set_bad(color="black")
-
-                    # Plot images side by side
-                    plt.figure(figsize=(10, 5))
-                    plt.subplot(1, 2, 1)
-                    b = 0
-                    plt.imshow(pred_np[b, 1], cmap='coolwarm', vmin=v_min, vmax=v_max)
-                    plt.title('Pred')
-                    plt.colorbar()
-
-                    plt.subplot(1, 2, 2)
-                    plt.imshow(target_np[b], cmap='coolwarm', vmin=v_min, vmax=v_max)
-                    plt.title('Target')
-                    plt.colorbar()
-
-                    # Save to disk
-                    plt.savefig(os.path.join(DATA_PATH, model_name, "pred_train_epochs",
-                                             f'{i}.png') )
-                    plt.close()
-
                 # Compute loss
-                target = target.long().cuda()
-                loss_mean = self._loss(pred, target[:, 0, :, :])
+                loss_mean = self._loss(pred, target.long().cuda()[:, 0, :, :])
 
                 print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")
 
@@ -156,6 +121,40 @@ class BevTraversability:
                 self._optimizer.zero_grad()
                 loss_mean.backward()
                 self._optimizer.step()
+
+            if VISU_DATA:
+                # Convert tensors to numpy arrays
+                pred_np = pred.clone().squeeze().cpu().detach().numpy()
+                target_np = target.clone().squeeze().cpu().detach().numpy()
+
+                # Normalize between v_min and v_max
+                v_min, v_max = 0, 1
+
+                # Replace -1 with np.nan
+                pred_np[pred_np == -1] = np.nan
+                target_np[target_np == -1] = np.nan
+
+                cmap = sns.color_palette("RdYlBu", as_cmap=True)
+
+                cmap.set_bad(color="black")
+
+                # Plot images side by side
+                plt.figure(figsize=(10, 5))
+                plt.subplot(1, 2, 1)
+                b = 0
+                plt.imshow(pred_np[b, 1], cmap='coolwarm', vmin=v_min, vmax=v_max)
+                plt.title('Pred')
+                plt.colorbar()
+
+                plt.subplot(1, 2, 2)
+                plt.imshow(target_np[b], cmap='coolwarm', vmin=v_min, vmax=v_max)
+                plt.title('Target')
+                plt.colorbar()
+
+                # Save to disk
+                plt.savefig(os.path.join(DATA_PATH, model_name, "pred_train_epochs",
+                                         f'{i}.png'))
+                plt.close()
 
             if save_model:
                 print(f"Saving model ... {model_name}")
