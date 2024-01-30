@@ -126,6 +126,12 @@ class BevTraversability:
                 # Convert tensors to numpy arrays
                 pred_np = pred.clone().squeeze().cpu().detach().numpy()
                 target_np = target.clone().squeeze().cpu().detach().numpy()
+                
+                # Check case if there is not batch dimension
+                if len(pred_np.shape) == 2:
+                    pred_np = pred_np[np.newaxis, ...]
+                if len(target_np.shape) == 2:
+                    target_np = target_np[np.newaxis, ...]
 
                 # Normalize between v_min and v_max
                 v_min, v_max = 0, 1
