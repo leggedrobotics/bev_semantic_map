@@ -12,14 +12,15 @@ import numpy as np
 import os
 import glob
 from bevnet.dataset import normalize_img
-from bevnet.cfg import DataParams, RunParams
-from scipy.spatial.transform import Rotation as R
+from bevnet.cfg import DataParams, RunParams, ModelParams
+from scipy.spatial.transform import Rotation as Rot
 
 class DemoDataset(torch.utils.data.Dataset):
-    def __init__(self, cfg_data: DataParams, cfg_run: RunParams):
+    def __init__(self, cfg_data: DataParams, cfg_run: RunParams, cfg_model: ModelParams):
         super(DemoDataset, self).__init__()
         self.cfg_data = cfg_data
         self.cfg_run = cfg_run
+        self.cfg_model = cfg_model
 
         self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
         self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
@@ -31,11 +32,14 @@ class DemoDataset(torch.utils.data.Dataset):
         # return self.cfg_data.nr_data
         # return len(self.img_paths)
         if self.cfg_run.nr_data < 0 or self.cfg_data.mode != "train":
-            return len(self.img_paths)
+            if len(self.img_paths) > 0:
+                return len(self.img_paths)
+            else:
+                return len(self.pcd_paths)
         else:
             return self.cfg_run.nr_data
 
-    def get_image_data(self, idx):
+    def get_image_data(self, idx, ):
         imgs = []
         img_plots = []
         rots = []
@@ -47,8 +51,10 @@ class DemoDataset(torch.utils.data.Dataset):
         for _ in range(self.cfg_data.nr_cameras):
             intrin = torch.Tensor(self.cfg_data.intrin).reshape(3, 3)
 
-            # img = np.zeros((self.cfg_data.img_width, self.cfg_data.img_height, 3), dtype=np.uint8)
-            img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
+            if self.cfg_model.image_backbone == "skip":
+                img = np.zeros((self.cfg_data.img_height, self.cfg_data.img_width, 3), dtype=np.uint8)
+            else:
+                img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
             img_plot = normalize_img(img)  # Perform potential augmentation to plot the image
 
             # perform some augmentation on the image / is now ignored
@@ -60,7 +66,7 @@ class DemoDataset(torch.utils.data.Dataset):
 
             H_base_camera = torch.eye(4)  # 4d tensor for tf from base to camera frame
  
-            H_base_camera[:3, :3] = torch.from_numpy(R.from_quat(self.cfg_data.rot_base_cam).as_matrix())
+            H_base_camera[:3, :3] = torch.from_numpy(Rot.from_quat(self.cfg_data.rot_base_cam).as_matrix())
             H_base_camera[:3, 3] = torch.from_numpy(np.array(self.cfg_data.trans_base_cam))
             rots.append(H_base_camera[:3, :3])
             trans.append(H_base_camera[:3, 3])
@@ -100,7 +106,7 @@ class DemoDataset(torch.utils.data.Dataset):
     def project_pc(self, pc, pose):
         # Transform points to frame
         position = np.array(pose[:3])
-        R = np.array(R.from_quat(pose[3:]).as_matrix())
+        R = np.array(Rot.from_quat(pose[3:]).as_matrix())
 
         points_list = []
         for p in pc:
@@ -124,6 +130,7 @@ class DemoDataset(torch.utils.data.Dataset):
             torch.zeros(self.cfg_data.target_shape),
             torch.zeros(self.cfg_data.aux_shape),
         )  # Labels and aux labels in BEV space
+
         if len(self.target_paths) > 0:
             target_np = torch.load(self.target_paths[idx])
             target = torch.from_numpy(target_np).unsqueeze(0)  # (1, 512, 512), for numpy arrays
@@ -138,6 +145,7 @@ class DemoDataset(torch.utils.data.Dataset):
         # cv2.imwrite(f"/home/rschmid/RosBags/bevnet/dummy/{idx}.jpg", target_out)
 
         imgs, rots, trans, intrins, post_rots, post_trans, img_plots = self.get_image_data(idx)
+
         pcd_new = self.get_raw_pcd_data(idx)
 
         return (
@@ -185,7 +193,8 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
 def get_bev_dataloader(mode="train", batch_size=1, shuffle=False):
     data_cfg = DataParams(mode=mode)
     run_cfg = RunParams()
-    dataset = DemoDataset(data_cfg, run_cfg)
+    model_cfg = ModelParams()
+    dataset = DemoDataset(data_cfg, run_cfg, model_cfg)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=shuffle)
 
     return data_loader, data_cfg.data_dir

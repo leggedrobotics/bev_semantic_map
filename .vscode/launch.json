@@ -8,9 +8,9 @@
             "name": "BevNet train",
             "type": "python",
             "request": "launch",
-            "program": "/home/jonfrey/git/bevnet/run.py",
+            "program": "/home/rschmid/git/bevnet/run.py",
             "console": "integratedTerminal",
-            "python": "/home/jonfrey/venv/bevnet/bin/python",
+            "python": "/home/rschmid/anaconda3/envs/bev/bin/python",
             "justMyCode": true,
             "args":["-t"]
         },
@@ -18,9 +18,9 @@
             "name": "BevNet prediction",
             "type": "python",
             "request": "launch",
-            "program": "/home/jonfrey/git/bevnet/run.py",
+            "program": "/home/rschmid/git/bevnet/run.py",
             "console": "integratedTerminal",
-            "python": "/home/jonfrey/venv/bevnet/bin/python",
+            "python": "/home/rschmid/anaconda3/envs/bev/bin/python",
             "justMyCode": true,
             "args":["-p", "-d", "b"]
         }
