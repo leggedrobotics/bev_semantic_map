@@ -1,5 +1,4 @@
 import torch
-from torch_geometric.data import Data
 import torch.nn.functional as F
 
 
@@ -49,8 +48,10 @@ class DoubleMLP(torch.nn.Module):
         self.networks = torch.nn.ModuleList(self.networks)
         self.output_features = hidden_sizes[-1] + input_size
 
-    def forward(self, data: Data) -> torch.Tensor:
+    def forward(self, data) -> torch.Tensor:
         x = data.x
+
+        raise ValueError("removed torch geometric dependency of repo by commenting out from torch_geometric.data import Data")
         # Checked data is correctly memory aligned and can be reshaped
         # If you change something in the dataloader make sure this is still working
         x1 = torch.sigmoid(self.networks[0](x))

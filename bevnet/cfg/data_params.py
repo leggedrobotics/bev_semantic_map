@@ -6,7 +6,8 @@ import os
 
 @dataclass
 class DataParams:
-    dataset: str = "bevnet"
+    dataset: str = "bevnet2"
+    # dataset: str = "single_data"
     mode: str = "train"
 
     # Sensors

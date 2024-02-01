@@ -16,11 +16,14 @@ import torch
 import wandb
 import argparse
 from dataclasses import asdict
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
-from bevnet.utils import Timer, DataVisualizer
+from bevnet.utils import Timer
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -28,11 +31,11 @@ np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
 MODEL_NAME = None
-MODEL_NAME = "2023_12_12_13_40_57"
+# MODEL_NAME = "2023_12_13_10_43_22"
 
-POS_WEIGHT = 0.2  # Num neg / num pos
+POS_WEIGHT = 10  # Num neg / num pos, from data around 0.08
 THRESHOLD = 0.1
-VISU_DATA = False
+VISU_DATA = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "bevnet", "data")
@@ -51,12 +54,10 @@ class BevTraversability:
         if self.wandb_logging:
             wandb.init(project=self._run_cfg.log_name)
 
-        self._optimizer = torch.optim.Adam(self._model.parameters(), lr=self._run_cfg.lr)
+        self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=self._run_cfg.lr)
 
-        self._loss = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(POS_WEIGHT))
-
-        if VISU_DATA:
-            self.data_visu = DataVisualizer()
+        self._loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9]), ignore_index=-1)
+        self._loss.cuda()
 
     def train(self, save_model=False):
         self._model.train()
@@ -69,6 +70,7 @@ class BevTraversability:
             os.makedirs(os.path.join(DATA_PATH, model_name, "weights"))
             os.makedirs(os.path.join(DATA_PATH, model_name, "pred_train"))
             os.makedirs(os.path.join(DATA_PATH, model_name, "pred_test"))
+            os.makedirs(os.path.join(DATA_PATH, model_name, "pred_train_epochs"))
 
         # Save configs as json
         with open(os.path.join(DATA_PATH, model_name, "config", "model_params.json"), 'w') as json_file:
@@ -78,7 +80,7 @@ class BevTraversability:
         with open(os.path.join(DATA_PATH, model_name, "config", "data_params.json"), 'w') as json_file:
             json.dump(asdict(self._data_cfg), json_file, indent=2)
 
-        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size)
+        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=True)
 
         num_data = len(data_loader)
 
@@ -90,28 +92,6 @@ class BevTraversability:
                     pcd_new["batch"].cuda(),
                     pcd_new["scan"].cuda(),
                 )
-
-                if VISU_DATA:
-                    # ROS visualization
-                    # target_out = target.numpy() + 1
-                    # target_out = target_out.astype(np.uint8).squeeze(1)
-                    #
-                    # pc_out = self.data_visu.correct_z_direction(pcd_new["points"])
-                    #
-                    # self.data_visu.publish_occ_map(target_out, res=0.1)
-                    # self.data_visu.publish_pc(pc_out)
-
-                    # OpenCV visualization
-                    target_out = target.squeeze()
-                    target_out = target_out + 1
-                    vis_img = np.zeros((target_out.shape[0], target_out.shape[1], 3), dtype=np.uint8)
-
-                    vis_img[target_out == 0] = (0, 0, 0)  # Unknown
-                    vis_img[target_out == 1] = (0, 255, 0)  # Safe
-                    vis_img[target_out == 2] = (0, 0, 255)  # Unsafe
-
-                    cv2.imshow("img", vis_img)
-                    cv2.waitKey(0)
 
                 # Forward pass
                 pred = self._model(
@@ -126,15 +106,11 @@ class BevTraversability:
                     target.cuda(),
                 )
 
+                pred = pred.softmax(dim=1).float()
+                target = target.float()
+
                 # Compute loss
-                mask = (target > -1).float().cuda()
-                loss = self._loss(pred, target.cuda())
-                loss = loss * mask
-                num_pixels = mask.sum()
-                if num_pixels > 0:
-                    loss_mean = loss.sum() / num_pixels  # Average loss over all non-background pixels
-                else:
-                    loss_mean = torch.tensor(0.0)  # Avoid division by zero if there are no non-background pixels
+                loss_mean = self._loss(pred, target.long().cuda()[:, 0, :, :])
 
                 print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")
 
@@ -146,12 +122,52 @@ class BevTraversability:
                 loss_mean.backward()
                 self._optimizer.step()
 
+            if VISU_DATA:
+                # Convert tensors to numpy arrays
+                pred_np = pred.clone().squeeze().cpu().detach().numpy()
+                target_np = target.clone().squeeze().cpu().detach().numpy()
+                
+                # Check case if there is not batch dimension
+                if len(pred_np.shape) == 2:
+                    pred_np = pred_np[np.newaxis, ...]
+                if len(target_np.shape) == 2:
+                    target_np = target_np[np.newaxis, ...]
+
+                # Normalize between v_min and v_max
+                v_min, v_max = 0, 1
+
+                # Replace -1 with np.nan
+                pred_np[pred_np == -1] = np.nan
+                target_np[target_np == -1] = np.nan
+
+                cmap = sns.color_palette("RdYlBu", as_cmap=True)
+
+                cmap.set_bad(color="black")
+
+                # Plot images side by side
+                plt.figure(figsize=(10, 5))
+                plt.subplot(1, 2, 1)
+                b = 0
+                plt.imshow(pred_np[b, 1], cmap='coolwarm', vmin=v_min, vmax=v_max)
+                plt.title('Pred')
+                plt.colorbar()
+
+                plt.subplot(1, 2, 2)
+                plt.imshow(target_np[b], cmap='coolwarm', vmin=v_min, vmax=v_max)
+                plt.title('Target')
+                plt.colorbar()
+
+                # Save to disk
+                plt.savefig(os.path.join(DATA_PATH, model_name, "pred_train_epochs",
+                                         f'{i}.png'))
+                plt.close()
+
             if save_model:
-                print("Saving model ...")
+                print(f"Saving model ... {model_name}")
                 torch.save(self._model.state_dict(),
                            os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"))
 
-    def predict(self, load_model=True, model_name=None, save_pred=False):
+    def predict(self, load_model=True, model_name=None, save_pred=False, test_dataset=None):
         if load_model:
             self._model.to(DEVICE)
 
@@ -173,13 +189,13 @@ class BevTraversability:
             except:
                 ValueError("This model configuration does not exist!")
 
-            if not os.path.exists(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}")):
-                os.makedirs(os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}"))
+            if not os.path.exists(os.path.join(DATA_PATH, model_name, f"pred_{test_dataset}")):
+                os.makedirs(os.path.join(DATA_PATH, model_name, f"pred_{test_dataset}"))
 
             # Set the model to evaluation mode
             self._model.eval()
 
-        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=TEST_DATASET, batch_size=1)
+        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=test_dataset, batch_size=1)
         for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -205,7 +221,7 @@ class BevTraversability:
             x = torch.sigmoid(pred).squeeze().cpu().detach().numpy()
 
             if save_pred:
-                torch.save(x, os.path.join(DATA_PATH, model_name, f"pred_{TEST_DATASET}", f"{j:04d}.pt"))
+                torch.save(x, os.path.join(DATA_PATH, model_name, f"pred_{test_dataset}", f"{j:04d}.pt"))
 
 
 if __name__ == "__main__":
@@ -214,20 +230,24 @@ if __name__ == "__main__":
     parser.add_argument("-t", action="store_true", help="""If set trains""")
     parser.add_argument("-p", action="store_true", help="""If set predicts""")
     parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
-    parser.add_argument('-d', default='p', choices=['t', 'p'], help="""Dataset specified (t: train, p: pred / test)""")
+    parser.add_argument('-d', default='p', choices=['t', 'p', 'b'],
+                        help="""Dataset specified (t: train, p: pred / test, b: both)""")
     args = parser.parse_args()
 
     bt = BevTraversability(args.l)
 
     if args.d == 't':
-        TEST_DATASET = "train"
+        TEST_DATASETS = ["train"]
+    elif args.d == 'p':
+        TEST_DATASETS = ["test"]
     else:
-        TEST_DATASET = "test"
+        TEST_DATASETS = ["train", "test"]
 
     # Setting training mode
     if args.t:
         bt.train(save_model=True)
     elif args.p:
-        bt.predict(load_model=True, model_name=MODEL_NAME, save_pred=True)
+        for TEST_DATASET in TEST_DATASETS:
+            bt.predict(load_model=True, model_name=MODEL_NAME, save_pred=True, test_dataset=TEST_DATASET)
     else:
         raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode)")
