@@ -7,10 +7,12 @@ Author: Robin Schmid
 Date: Sep 2023
 """
 
+import os
+import cv2
+import glob
 import torch
 import numpy as np
-import os
-import glob
+from PIL import Image
 from bevnet.dataset import normalize_img
 from bevnet.cfg import DataParams, RunParams, ModelParams
 from scipy.spatial.transform import Rotation as Rot
@@ -22,10 +24,8 @@ class DemoDataset(torch.utils.data.Dataset):
         self.cfg_run = cfg_run
         self.cfg_model = cfg_model
 
-        self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
+        self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "img", "*")))
         self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd", "*")))
-        # self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
-        # self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "mask", "*")))
         self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_trav", "*")))
 
     def __len__(self):
@@ -54,8 +54,12 @@ class DemoDataset(torch.utils.data.Dataset):
             if self.cfg_model.image_backbone == "skip":
                 img = np.zeros((self.cfg_data.img_height, self.cfg_data.img_width, 3), dtype=np.uint8)
             else:
-                img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
+                # img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
+                img = cv2.imread(self.img_paths[idx])
             img_plot = normalize_img(img)  # Perform potential augmentation to plot the image
+
+            # resize to fH, fW
+            img = cv2.resize(img, (self.cfg_model.lift_splat_shoot_net.augmentation.fW, self.cfg_model.lift_splat_shoot_net.augmentation.fH))
 
             # perform some augmentation on the image / is now ignored
             post_tran = torch.zeros(3)
