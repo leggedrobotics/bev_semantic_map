@@ -4,11 +4,11 @@ from dataclasses import dataclass, field, asdict
 @dataclass
 class RunParams:
     nr_data: int = -1   # -1 for all
-    training_batch_size: int = 2
-    epochs: int = 100
+    training_batch_size: int = 4
+    epochs: int = 20
     lr: float = 1e-4
     weight_decay: float = 1e-4
-    log_name: str = "bevnet_geometry"
+    log_name: str = "vision_only"
 
 
 data: RunParams = RunParams()

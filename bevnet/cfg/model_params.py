@@ -31,8 +31,8 @@ class ModelParams:
         class AugmentationParams:
             H: int = 540  # 396, 128; 540
             W: int = 720  # 640, 128; 720
-            fH: int = 512  # 256 (does not work), 640, 128; 512 Images need to be divisible by 32
-            fW: int = 704  # 384 (does not work), 480, 128; 640 Images need to be divisible by 32
+            fH: int = 544  # 256 (does not work), 640, 128; 512 Images need to be divisible by 32
+            fW: int = 736  # 384 (does not work), 480, 128; 640 Images need to be divisible by 32
             resize_lim: List[float] = field(default_factory=lambda: [0.6, 0.7])  # this should be roughly fH/H or fW/W
             bot_pct_lim: List[float] = field(
                 default_factory=lambda: [-0.05, 0.05]  # [-0.05, 0.05]
@@ -60,10 +60,10 @@ class ModelParams:
     point_pillars: PointPillarsParams = PointPillarsParams()
     fusion_net = FusionNetParams()
 
-    image_backbone: str = "lift_splat_shoot_net"  # "lift_splat_shoot_net" or "skip
-    # image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
-    pointcloud_backbone: str = "point_pillars"   # "point_pillars" or "skip"
-    # pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
+    # image_backbone: str = "lift_splat_shoot_net"  # "lift_splat_shoot_net" or "skip
+    image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
+    # pointcloud_backbone: str = "point_pillars"   # "point_pillars" or "skip"
+    pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
     fusion_backbone: str = "CNN"    # "CNN" or "skip"
 
     def __post_init__(self):

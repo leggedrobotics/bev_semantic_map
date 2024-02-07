@@ -7,10 +7,12 @@ Author: Robin Schmid
 Date: Sep 2023
 """
 
+import re
 import os
 import cv2
 import time
 import json
+from tqdm import tqdm
 import numpy as np
 import torch
 import wandb
@@ -31,21 +33,26 @@ np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
 
 MODEL_NAME = None
-# MODEL_NAME = "2023_12_13_10_43_22"
+MODEL_NAME = "2024_02_07_16_47_07"    # Specify a specific model
 
-POS_WEIGHT = 10  # Num neg / num pos, from data around 0.08
+POS_WEIGHT = 10  # Num pos / num neg
 THRESHOLD = 0.1
-VISU_DATA = True
+VISU_TRAIN_EPOCHS = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_DIR, "bevnet", "data")
 
 
 class BevTraversability:
-    def __init__(self, wandb_logging=False):
+    def __init__(self, wandb_logging=False, img_backbone=False, pcd_backbone=False):
         self._model_cfg = ModelParams()
         self._run_cfg = RunParams()
         self._data_cfg = DataParams()
+
+        if img_backbone:
+            self._model_cfg.image_backbone = "lift_splat_shoot_net"
+        if pcd_backbone:
+            self._model_cfg.pointcloud_backbone = "point_pillars"
 
         self._model = BevNet(self._model_cfg)
         self._model.cuda()
@@ -58,6 +65,7 @@ class BevTraversability:
 
         self._loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9]), ignore_index=-1)
         self._loss.cuda()
+        self._loss_mean = torch.tensor(0.0)
 
     def train(self, save_model=False):
         self._model.train()
@@ -76,53 +84,63 @@ class BevTraversability:
         with open(os.path.join(DATA_PATH, model_name, "config", "model_params.json"), 'w') as json_file:
             json.dump(asdict(self._model_cfg), json_file, indent=2)
         with open(os.path.join(DATA_PATH, model_name, "config", "run_params.json"), 'w') as json_file:
+            self._run_cfg.log_name = model_name + "_img_" + self._model_cfg.image_backbone + "_pcd_" + self._model_cfg.pointcloud_backbone
             json.dump(asdict(self._run_cfg), json_file, indent=2)
         with open(os.path.join(DATA_PATH, model_name, "config", "data_params.json"), 'w') as json_file:
             json.dump(asdict(self._data_cfg), json_file, indent=2)
 
-        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=True)
+        data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=True, model_cfg=self._model_cfg)
 
-        num_data = len(data_loader)
+        for i in tqdm(range(self._run_cfg.epochs), desc="Epochs"):
+            try:
+                for _, batch in enumerate(tqdm(data_loader, desc=f"Epoch {i+1} / {self._run_cfg.epochs} | Loss {self._loss_mean.item():.9f} | Batches")):
+                    imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
+                    pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
+                        pcd_new["points"].cuda(),
+                        pcd_new["batch"].cuda(),
+                        pcd_new["scan"].cuda(),
+                    )
 
-        for i in range(self._run_cfg.epochs):
-            for j, batch in enumerate(data_loader):
-                imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
-                pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
-                    pcd_new["points"].cuda(),
-                    pcd_new["batch"].cuda(),
-                    pcd_new["scan"].cuda(),
-                )
+                    # img_to_visualize = imgs[0].squeeze().cpu().numpy()  # Convert the first image tensor to numpy
+                    # plt.imshow(np.transpose(img_to_visualize, (1, 2, 0))* 255)  # Transpose the image for correct display
+                    # plt.title("First Image in Batch")
+                    # plt.show()
 
-                # Forward pass
-                pred = self._model(
-                    imgs.cuda(),
-                    rots.cuda(),
-                    trans.cuda(),
-                    intrins.cuda(),
-                    post_rots.cuda(),
-                    post_trans.cuda(),
-                    target.cuda().shape,
-                    pcd_new,
-                    target.cuda(),
-                )
+                    try:
+                        # Forward pass
+                        pred = self._model(
+                            imgs.cuda(),
+                            rots.cuda(),
+                            trans.cuda(),
+                            intrins.cuda(),
+                            post_rots.cuda(),
+                            post_trans.cuda(),
+                            target.cuda().shape,
+                            pcd_new,
+                            target.cuda(),
+                        )
 
-                pred = pred.softmax(dim=1).float()
-                target = target.float()
+                        pred = pred.softmax(dim=1).float()
+                        target = target.float()
 
-                # Compute loss
-                loss_mean = self._loss(pred, target.long().cuda()[:, 0, :, :])
+                        # Compute loss
+                        self._loss_mean = self._loss(pred, target.long().cuda()[:, 0, :, :])
 
-                print(f"Epoch {i} / {self._run_cfg.epochs} | Batch {j} / {num_data} | Loss {loss_mean.item():.9f}")
+                        if self.wandb_logging:
+                            wandb.log({"train_loss": self._loss_mean.item()})
 
-                if self.wandb_logging:
-                    wandb.log({"train_loss": loss_mean.item()})
+                        # Backward pass
+                        self._optimizer.zero_grad()
+                        self._loss_mean.backward()
+                        self._optimizer.step()
+                    except Exception as e:
+                        print(e)
+                        continue
+            except Exception as e:
+                print(e)
+                continue
 
-                # Backward pass
-                self._optimizer.zero_grad()
-                loss_mean.backward()
-                self._optimizer.step()
-
-            if VISU_DATA:
+            if VISU_TRAIN_EPOCHS:
                 # Convert tensors to numpy arrays
                 pred_np = pred.clone().squeeze().cpu().detach().numpy()
                 target_np = target.clone().squeeze().cpu().detach().numpy()
@@ -159,13 +177,14 @@ class BevTraversability:
 
                 # Save to disk
                 plt.savefig(os.path.join(DATA_PATH, model_name, "pred_train_epochs",
-                                         f'{i}.png'))
+                                        f'{i}.png'))
                 plt.close()
 
             if save_model:
-                print(f"Saving model ... {model_name}")
+                # and i % 10 == 0:
+                print(f"Saving model for epoch {i} as {model_name}")
                 torch.save(self._model.state_dict(),
-                           os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"))
+                           os.path.join(DATA_PATH, model_name, "weights", f"{model_name}_{i}.pth"))
 
     def predict(self, load_model=True, model_name=None, save_pred=False, test_dataset=None):
         if load_model:
@@ -178,13 +197,28 @@ class BevTraversability:
                 sorted_directories = sorted(all_directories)
                 model_name = sorted_directories[-1]
 
-            print(f"Using model from {model_name}")
-
             try:
+                weights_dir = os.path.join(DATA_PATH, model_name, "weights")
+                all_weights = [f for f in os.listdir(weights_dir) if f.endswith('.pth')]
+
+                # Function to extract all numbers from the filename and return them as a tuple of integers
+                def extract_numbers(s):
+                    numbers = re.findall(r'\d+', s)
+                    return tuple(int(number) for number in numbers)
+
+                # Sort files based on the numerical parts extracted
+                sorted_weights = sorted(all_weights, key=extract_numbers)
+
+                # Select the last file after sorting
+                latest_weight_file = sorted_weights[-1]
+
+                print(f"Using model {latest_weight_file}")
+
                 self._model.load_state_dict(
                     torch.load(
-                        os.path.join(DATA_PATH, model_name, "weights", f"{model_name}.pth"),
-                        map_location=torch.device(DEVICE)), strict=True
+                        os.path.join(weights_dir, latest_weight_file),
+                        map_location=torch.device(DEVICE)
+                    ), strict=True
                 )
             except:
                 ValueError("This model configuration does not exist!")
@@ -195,7 +229,7 @@ class BevTraversability:
             # Set the model to evaluation mode
             self._model.eval()
 
-        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=test_dataset, batch_size=1)
+        data_loader, self._data_cfg.data_dir = get_bev_dataloader(mode=test_dataset, batch_size=1, model_cfg=self._model_cfg)
         for j, batch in enumerate(data_loader):
             imgs, rots, trans, intrins, post_rots, post_trans, target, *_, pcd_new = batch
             pcd_new["points"], pcd_new["batch"], pcd_new["scan"] = (
@@ -232,9 +266,11 @@ if __name__ == "__main__":
     parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
     parser.add_argument('-d', default='p', choices=['t', 'p', 'b'],
                         help="""Dataset specified (t: train, p: pred / test, b: both)""")
+    parser.add_argument('--img', action="store_true", help="""Image backbone true""")
+    parser.add_argument('--pcd', action="store_true", help="""Pointcloud backbone true""")
     args = parser.parse_args()
 
-    bt = BevTraversability(args.l)
+    bt = BevTraversability(args.l, args.img, args.pcd)
 
     if args.d == 't':
         TEST_DATASETS = ["train"]
@@ -242,7 +278,7 @@ if __name__ == "__main__":
         TEST_DATASETS = ["test"]
     else:
         TEST_DATASETS = ["train", "test"]
-
+    
     # Setting training mode
     if args.t:
         bt.train(save_model=True)

@@ -7,7 +7,9 @@ import os
 @dataclass
 class DataParams:
     dataset: str = "bevnet2"
-    # dataset: str = "single_data"
+    # 2: uetliberg
+    # 3: hoengg
+
     mode: str = "train"
     data_dir_base: str = "/home/rschmid/RosBags"
 
@@ -16,20 +18,18 @@ class DataParams:
     nr_lidar_points_time: int = 1
 
     # Image
-    img_width: int = 720  # 640, 128; 720
-    img_height: int = 540  # 480, 128; 540
+    img_width: int = 720  # 736 such that it is divisible by 32
+    img_height: int = 540  # 544 such that it is divisible by 32
 
     # Camera parameters
     # intrin = [255.8245, 0.0000, 331.4361, 0.0000, 257.1399, 230.8981, 0.0000, 0.0000, 1.0000]  # 640 x 480
-    intrin = [283.0345929416784, 0.0, 376.6064871553857, 0.0, 284.3305122630549, 271.0076672594754, 0.0, 0.0, 1]
-    trans_base_cam = [-0.409, -0.000, -0.021]
-    rot_base_cam = [0.000, 0.000, 1.000, -0.000]
-    
-    # trans_base_cam = [-1.1102230246251565e-16, 0.020499999999999907, -0.40449]
-    # rot_base_cam = [-0.5, 0.4999999999999999, -0.5, -0.5000000000000001]
+    ## rosrun tf tf_echo wide_angle_camera_rear_camera_parent base
+    # trans_base_cam = [-0.409, -0.000, -0.021] # For the front camera
+    # rot_base_cam = [0.000, 0.000, 1.000, -0.000]
 
-    # Static tf for hdr camera
-    # -0.00451632 -0.09041891 0.04183124 -0.00371707 0.10704935 0.99422573 0.00646622 wide_angle_camera_rear_camera_parent hdr_cam
+    intrin = [283.0345929416784, 0.0, 376.6064871553857, 0.0, 284.3305122630549, 271.0076672594754, 0.0, 0.0, 1]    # 720 x 540
+    trans_base_cam = [-0.000, 0.020, -0.404]
+    rot_base_cam = [0.500, 0.500, -0.500, 0.500]
 
     # Output settings
     target_shape: Tuple[int, int, int] = (1, 64, 64)
