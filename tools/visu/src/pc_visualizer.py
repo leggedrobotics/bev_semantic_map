@@ -33,10 +33,14 @@ class PcdVisualizer:
         self.show_pc2 = rospy.get_param("show_pc2")
         self.show_label = rospy.get_param("show_label")
         self.show_pred = rospy.get_param("show_pred")
+        self.show_frustrum = rospy.get_param("show_frustrum")
 
         self.data_dir = rospy.get_param("data_dir")
+        self.pred_dir = rospy.get_param("pred_dir")
+        
         self.pub_pc1 = rospy.Publisher("point_cloud1", PointCloud2, queue_size=1)
         self.pub_pc2 = rospy.Publisher("point_cloud2", PointCloud2, queue_size=1)
+        self.pub_frustrum = rospy.Publisher("frustrum", PointCloud2, queue_size=1)
         self.pub_grid_map = rospy.Publisher("grid_map", GridMap, queue_size=1)
         self.pub_occupancy_map = rospy.Publisher("occupancy_grid", OccupancyGrid, queue_size=1)
 
@@ -59,6 +63,18 @@ class PcdVisualizer:
 
         if publish:
             self.pub_pc2.publish(pointcloud_msg)
+    
+    def frustrum_process(self, point_cloud, publish=False):
+        header = std_msgs.msg.Header()
+        header.frame_id = "world"
+
+        point_cloud = point_cloud.reshape(-1, 3)
+
+        # Create a PointCloud2 message
+        pointcloud_msg = sensor_msgs.point_cloud2.create_cloud_xyz32(header, point_cloud)
+
+        if publish:
+            self.pub_frustrum.publish(pointcloud_msg)
 
     def correct_z_direction(self, point_cloud):
         # Increase z value by 0.6
@@ -142,7 +158,7 @@ if __name__ == "__main__":
             vis.show_pc1 = False
 
     if vis.show_pc2:
-        pc_dir2 = os.path.join(vis.data_dir, "pcd_ext")
+        pc_dir2 = os.path.join(vis.pred_dir, "pcd_ext")
         pc_files2 = sorted([f for f in os.listdir(pc_dir2) if f.endswith(".pt")])
 
         if len(pc_files2) > 0:
@@ -151,7 +167,7 @@ if __name__ == "__main__":
             vis.show_pc2 = False
 
     if vis.show_label:
-        label_dir = os.path.join(vis.data_dir, "bin_label")
+        label_dir = os.path.join(vis.data_dir, "bin_trav")
         label_files = sorted([f for f in os.listdir(label_dir) if f.endswith(".pt")])
 
         if len(label_files) > 0:
@@ -160,13 +176,17 @@ if __name__ == "__main__":
             vis.show_label = False
 
     if vis.show_pred:
-        pred_dir = os.path.join(vis.data_dir, "../pred_conf")
+        pred_dir = os.path.join(vis.pred_dir, "2024_02_07_08_55_04/pred_train")
         pred_files = sorted([f for f in os.listdir(pred_dir) if f.endswith(".jpg")])
 
         if len(pred_files) > 0:
             num_files = len(pred_files)
         else:
             vis.show_pred = False
+    
+    if vis.show_frustrum:
+        frustrum_published = False
+        frustrum_path = os.path.join(vis.data_dir, "../others", "frustrum.pt")
 
     assert num_files > 0, "No files to go through!"
 
@@ -214,6 +234,10 @@ if __name__ == "__main__":
 
             # print(pred)
             vis.grid_map_arr(pred, RESOLUTION, LAYERS, x=0, y=0)
+        
+        if vis.show_frustrum and not frustrum_published:
+            frustrum = torch.load(frustrum_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
+            vis.frustrum_process(frustrum, publish=True)
 
         if rospy.has_param("dynamic_params_bev/IDX"):
             IDX = rospy.get_param("dynamic_params_bev/IDX")

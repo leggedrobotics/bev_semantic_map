@@ -52,7 +52,7 @@ class DemoDataset(torch.utils.data.Dataset):
             intrin = torch.Tensor(self.cfg_data.intrin).reshape(3, 3)
 
             if self.cfg_model.image_backbone == "skip":
-                print("No image backbone!")
+                # print("No image backbone!")
                 img = np.zeros((self.cfg_data.img_height, self.cfg_data.img_width, 3), dtype=np.uint8)
             else:
                 # img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
