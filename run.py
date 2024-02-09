@@ -18,6 +18,7 @@ import torch
 import wandb
 import argparse
 from dataclasses import asdict
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -31,12 +32,12 @@ from bevnet.utils import Timer
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
+matplotlib.use('Agg')   # To avoid using X server and run it in the background
 
 MODEL_NAME = None
-MODEL_NAME = "2024_02_07_16_47_07"    # Specify a specific model
+MODEL_NAME = "2024_02_08_15_33_46"    # Specify a specific model
 
 POS_WEIGHT = 10  # Num pos / num neg
-THRESHOLD = 0.1
 VISU_TRAIN_EPOCHS = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,8 +59,6 @@ class BevTraversability:
         self._model.cuda()
 
         self.wandb_logging = wandb_logging
-        if self.wandb_logging:
-            wandb.init(project=self._run_cfg.log_name)
 
         self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=self._run_cfg.lr)
 
@@ -91,6 +90,9 @@ class BevTraversability:
 
         data_loader, _ = get_bev_dataloader(mode="train", batch_size=self._run_cfg.training_batch_size, shuffle=True, model_cfg=self._model_cfg)
 
+        if self.wandb_logging:
+            wandb.init(project=self._run_cfg.log_name)
+
         for i in tqdm(range(self._run_cfg.epochs), desc="Epochs"):
             try:
                 for _, batch in enumerate(tqdm(data_loader, desc=f"Epoch {i+1} / {self._run_cfg.epochs} | Loss {self._loss_mean.item():.9f} | Batches")):
@@ -106,39 +108,34 @@ class BevTraversability:
                     # plt.title("First Image in Batch")
                     # plt.show()
 
-                    try:
-                        # Forward pass
-                        pred = self._model(
-                            imgs.cuda(),
-                            rots.cuda(),
-                            trans.cuda(),
-                            intrins.cuda(),
-                            post_rots.cuda(),
-                            post_trans.cuda(),
-                            target.cuda().shape,
-                            pcd_new,
-                            target.cuda(),
-                        )
+                    # Forward pass
+                    pred = self._model(
+                        imgs.cuda(),
+                        rots.cuda(),
+                        trans.cuda(),
+                        intrins.cuda(),
+                        post_rots.cuda(),
+                        post_trans.cuda(),
+                        target.cuda().shape,
+                        pcd_new,
+                        target.cuda(),
+                    )
 
-                        pred = pred.softmax(dim=1).float()
-                        target = target.float()
+                    pred = pred.softmax(dim=1).float()
+                    target = target.float()
 
-                        # Compute loss
-                        self._loss_mean = self._loss(pred, target.long().cuda()[:, 0, :, :])
+                    # Compute loss
+                    self._loss_mean = self._loss(pred, target.long().cuda()[:, 0, :, :])
 
-                        if self.wandb_logging:
-                            wandb.log({"train_loss": self._loss_mean.item()})
+                    if self.wandb_logging:
+                        wandb.log({"train_loss": self._loss_mean.item()})
 
-                        # Backward pass
-                        self._optimizer.zero_grad()
-                        self._loss_mean.backward()
-                        self._optimizer.step()
-                    except Exception as e:
-                        print(e)
-                        continue
+                    # Backward pass
+                    self._optimizer.zero_grad()
+                    self._loss_mean.backward()
+                    self._optimizer.step()
             except Exception as e:
-                print(e)
-                continue
+                print(f"Error in epoch {i}: {e}")
 
             if VISU_TRAIN_EPOCHS:
                 # Convert tensors to numpy arrays
