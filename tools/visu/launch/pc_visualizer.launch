@@ -3,10 +3,12 @@
   <param name="show_pc1" value="true" />
   <param name="show_pc2" value="false" />
   <param name="show_label" value="true" />
-  <param name="show_pred" value="true" />
-  <param name="show_frustrum" value="true" />
-  <param name="data_dir" value="/home/rschmid/RosBags/bevnet2/train" />
-  <param name="pred_dir" value="/home/rschmid/git/bevnet/data" />
+  <param name="show_pred" value="false" />
+  <param name="show_frustrum" value="false" />
+  <param name="data_dir" value="/home/rschmid/RosBags/bevnet4/train" />
+  <!-- <param name="data_dir" value="/home/rschmid/RosBags/bevnet2/train" /> -->
+  <!-- <param name="pred_dir" value="/home/rschmid/git/bevnet/data" /> -->
+  <param name="pred_dir" value="/home/rschmid/RosBags/bevnet4/train" />
 
   <!-- Launch server.py using rosrun -->
   <node name="dynamic_params_bev" pkg="dynamic_params_bev" type="server.py" output="screen"/>

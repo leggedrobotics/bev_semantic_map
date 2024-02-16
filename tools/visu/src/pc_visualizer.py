@@ -23,7 +23,7 @@ import torch
 
 np.set_printoptions(threshold=sys.maxsize)
 
-RESOLUTION = 0.1
+RESOLUTION = 0.05
 LAYERS = ["mask"]
 
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
             vis.show_pc1 = False
 
     if vis.show_pc2:
-        pc_dir2 = os.path.join(vis.pred_dir, "pcd_ext")
+        pc_dir2 = os.path.join(vis.data_dir, "pcd_single")
         pc_files2 = sorted([f for f in os.listdir(pc_dir2) if f.endswith(".pt")])
 
         if len(pc_files2) > 0:
