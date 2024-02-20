@@ -24,8 +24,8 @@ class DemoDataset(torch.utils.data.Dataset):
         self.cfg_run = cfg_run
         self.cfg_model = cfg_model
 
-        self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "img", "*")))
-        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd", "*")))
+        self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "hdr_img", "*")))
+        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_filtered", "*")))
         self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_trav", "*")))
 
     def __len__(self):

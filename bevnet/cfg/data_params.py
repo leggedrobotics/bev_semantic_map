@@ -6,7 +6,7 @@ import os
 
 @dataclass
 class DataParams:
-    dataset: str = "bevnet2"
+    dataset: str = "bevnet4"
     # 2: uetliberg
     # 3: hoengg
 
@@ -27,7 +27,7 @@ class DataParams:
     # trans_base_cam = [-0.409, -0.000, -0.021] # For the front camera
     # rot_base_cam = [0.000, 0.000, 1.000, -0.000]
 
-    intrin = [283.0345929416784, 0.0, 376.6064871553857, 0.0, 284.3305122630549, 271.0076672594754, 0.0, 0.0, 1]    # 720 x 540
+    intrin = [283.0345929416784, 0.0, 376.6064871553857, 0.0, 284.3305122630549, 271.0076672594754, 0.0, 0.0, 1]    # 720 x 540 (HDR)
     trans_base_cam = [-0.000, 0.020, -0.404]
     rot_base_cam = [0.500, 0.500, -0.500, 0.500]
 
