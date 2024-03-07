@@ -32,13 +32,13 @@ from bevnet.utils import Timer
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.set_printoptions(linewidth=200)
 torch.set_printoptions(edgeitems=200)
-matplotlib.use('Agg')   # To avoid using X server and run it in the background
+# matplotlib.use('Agg')   # To avoid using X server and run it in the background
 
 MODEL_NAME = None
 # MODEL_NAME = "2024_02_08_15_33_46"    # Specify a specific model
 # MODEL_NAME = "2024_02_19_09_22_53"
 
-POS_WEIGHT = 10  # Num pos / num neg
+POS_WEIGHT = 1  # Num pos / num neg
 VISU_TRAIN_EPOCHS = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

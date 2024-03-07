@@ -8,7 +8,7 @@ class RunParams:
     epochs: int = 50
     lr: float = 1e-3
     weight_decay: float = 1e-4
-    log_name: str = "img_geom_dense"
+    log_name: str = "geom_dense"
 
 
 data: RunParams = RunParams()
