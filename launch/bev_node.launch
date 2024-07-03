@@ -1,0 +1,10 @@
+<launch>
+    <arg name="resize_images"    default="True"/>
+    <arg name="run_node"    default="False"/>
+    <!-- BEV node -->
+    <node if="$(arg run_node)" name="bev_node" pkg="perception_bev_learning_ros" type="bev_node.py" output="screen"> 
+        <param name="resize_images" value="$(arg resize_images)"/>
+    </node>    
+    <!-- Resize Images -->
+    <include if="$(arg resize_images)" file="$(find perception_bev_learning_ros)/launch/resize_images.launch"/>
+</launch>
