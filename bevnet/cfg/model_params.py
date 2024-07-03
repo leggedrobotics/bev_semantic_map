@@ -19,20 +19,20 @@ class ModelParams:
         @dataclass
         class GridParams:
             xbound: List[float] = field(
-                default_factory=lambda: [-3.2, 3.2, 0.1]
+                default_factory=lambda: [-3.2, 3.2, 0.05]
             )  # [-51.2, 51.2, 0.2]
             ybound: List[float] = field(
-                default_factory=lambda: [-3.2, 3.2, 0.1]
+                default_factory=lambda: [-3.2, 3.2, 0.05]
             )  # [-51.2, 51.2, 0.2]
             zbound: List[float] = field(default_factory=lambda: [-5.0, 5.0, 10.0])  # [-20.0, 20.0, 40.0]
             dbound: List[float] = field(default_factory=lambda: [1.0, 3.2, 0.05])  # [4.0, 50.0, 0.2]
 
         @dataclass
         class AugmentationParams:
-            H: int = 480  # 396, 128; 540
-            W: int = 640  # 640, 128; 720
-            fH: int = 480  # 256 (does not work), 640, 128; 512
-            fW: int = 640  # 384 (does not work), 480, 128; 640
+            H: int = 540  # 396, 128; 540
+            W: int = 720  # 640, 128; 720
+            fH: int = 544  # 396, 128; 512 Images need to be divisible by 32; 544
+            fW: int = 736  # 640, 128; 640 Images need to be divisible by 32; 736
             resize_lim: List[float] = field(default_factory=lambda: [0.6, 0.7])  # this should be roughly fH/H or fW/W
             bot_pct_lim: List[float] = field(
                 default_factory=lambda: [-0.05, 0.05]  # [-0.05, 0.05]
@@ -42,6 +42,7 @@ class ModelParams:
 
         grid: GridParams = GridParams()
         augmentation: AugmentationParams = AugmentationParams()
+        # TODO: add augmentations
         output_channels: int = 64  # 64
         bevencode: bool = False
 
@@ -61,8 +62,8 @@ class ModelParams:
 
     # image_backbone: str = "lift_splat_shoot_net"  # "lift_splat_shoot_net" or "skip
     image_backbone: str = "skip"  # "lift_splat_shoot_net" or "skip
-    pointcloud_backbone: str = "point_pillars"   # "point_pillars" or "skip"
-    # pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
+    # pointcloud_backbone: str = "point_pillars"   # "point_pillars" or "skip"
+    pointcloud_backbone: str = "skip"  # "point_pillars" or "skip"
     fusion_backbone: str = "CNN"    # "CNN" or "skip"
 
     def __post_init__(self):

@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /PointCloud21
       Splitter Ratio: 0.5
     Tree Height: 987
   - Class: rviz/Selection
@@ -59,8 +60,8 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
+      Color: 115; 210; 22
+      Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -71,7 +72,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.009999999776482582
+      Size (m): 0.019999999552965164
       Style: Flat Squares
       Topic: /point_cloud1
       Unreliable: false
@@ -110,12 +111,12 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: false
+      Enabled: true
       Name: Map
       Topic: /occupancy_grid
       Unreliable: false
       Use Timestamp: false
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Class: grid_map_rviz_plugin/GridMap
@@ -168,7 +169,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 13.872962951660156
+      Distance: 14.661890983581543
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -176,17 +177,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.6096657514572144
-        Y: -0.25628921389579773
-        Z: 0.6015189290046692
+        X: 0.28381943702697754
+        Y: 0.1096092164516449
+        Z: 0.8552585244178772
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.1997981071472168
+      Pitch: 0.37979745864868164
       Target Frame: <Fixed Frame>
-      Yaw: 4.597381114959717
+      Yaw: 0.2923393249511719
     Saved: ~
 Window Geometry:
   Displays:

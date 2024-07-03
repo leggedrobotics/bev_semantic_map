@@ -7,10 +7,12 @@ Author: Robin Schmid
 Date: Sep 2023
 """
 
-import torch
-import numpy as np
 import os
+import cv2
 import glob
+import torch
+import matplotlib.pyplot as plt
+import numpy as np
 from bevnet.dataset import normalize_img
 from bevnet.cfg import DataParams, RunParams, ModelParams
 from scipy.spatial.transform import Rotation as Rot
@@ -22,11 +24,9 @@ class DemoDataset(torch.utils.data.Dataset):
         self.cfg_run = cfg_run
         self.cfg_model = cfg_model
 
-        self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "image", "*")))
-        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd", "*")))
-        # self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_ext", "*")))
-        # self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "mask", "*")))
-        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_trav", "*")))
+        self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "img", "*")))
+        self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_filtered", "*")))
+        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_trav_filtered", "*")))
 
     def __len__(self):
         # return self.cfg_data.nr_data
@@ -52,16 +52,32 @@ class DemoDataset(torch.utils.data.Dataset):
             intrin = torch.Tensor(self.cfg_data.intrin).reshape(3, 3)
 
             if self.cfg_model.image_backbone == "skip":
+                # print("No image backbone!")
                 img = np.zeros((self.cfg_data.img_height, self.cfg_data.img_width, 3), dtype=np.uint8)
             else:
-                img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
+                # img = np.array(torch.load(self.img_paths[idx]).permute(1, 2, 0).cpu())
+                img = cv2.imread(self.img_paths[idx])
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB format
             img_plot = normalize_img(img)  # Perform potential augmentation to plot the image
+
+            # Visualize the image with matplotlib
+            # plt.imshow(img)
+            # plt.title(f"Sample Image at Index {idx}")
+            # plt.show()
+
+            # resize to fH, fW
+            img = cv2.resize(img, (self.cfg_model.lift_splat_shoot_net.augmentation.fW, self.cfg_model.lift_splat_shoot_net.augmentation.fH))
+
 
             # perform some augmentation on the image / is now ignored
             post_tran = torch.zeros(3)
             post_rot = torch.eye(3)
 
             imgs.append(normalize_img(img))
+
+            # plt.imshow(np.transpose(imgs[0], (1, 2, 0)) * 255)
+            # plt.show()
+
             intrins.append(intrin)
 
             H_base_camera = torch.eye(4)  # 4d tensor for tf from base to camera frame
@@ -190,12 +206,13 @@ def collate_fn(batch):  # Prevents automatic data loading, performs operations o
     return tuple(output_batch)
 
 
-def get_bev_dataloader(mode="train", batch_size=1, shuffle=False):
+def get_bev_dataloader(mode="train", batch_size=1, shuffle=False, model_cfg=None):
     data_cfg = DataParams(mode=mode)
     run_cfg = RunParams()
-    model_cfg = ModelParams()
+    if model_cfg is None:
+        model_cfg = ModelParams()
     dataset = DemoDataset(data_cfg, run_cfg, model_cfg)
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=shuffle)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn, shuffle=shuffle, num_workers=1, pin_memory=True)
 
     return data_loader, data_cfg.data_dir
 

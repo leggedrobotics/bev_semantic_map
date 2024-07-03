@@ -30,6 +30,8 @@ class Up(nn.Module):
 
     def forward(self, x1, x2):
         x1 = nn.functional.interpolate(x1, scale_factor=self.scale_factor, mode="bilinear", align_corners=True)
+        # print("x1", x1.shape)
+        # print("x2", x2.shape)
         x1 = torch.cat([x2, x1], dim=1)
         return self.conv(x1)
 
@@ -227,10 +229,13 @@ class LiftSplatShootNet(nn.Module):
         B, N, C, imH, imW = x.shape
 
         x = x.view(B * N, C, imH, imW)  # BN x C x H x W, bring in right shape for efficientnet
+        # print(x.shape)
         x = self.camencode(x)
+        # print(x.shape)
         x = x.view(B, N, self.camC, self.D, imH // self.downsample, imW // self.downsample)
+        # print(x.shape)
         x = x.permute(0, 1, 3, 4, 5, 2)
-
+        # print(x.shape)
         return x
 
     def voxel_pooling(self, geom_feats, x, *args, **kwargs):
@@ -297,7 +302,7 @@ class LiftSplatShootNet(nn.Module):
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans, *args, **kwargs)
 
         # Save the frustrum for debugging
-        # torch.save(geom, "/home/rschmid/RosBags/bevnet/frustrum/frustrum.pt")
+        # torch.save(geom, "/home/rschmid/RosBags/bevnet2/others/frustrum.pt")
 
         x = self.get_cam_feats(x, *args, **kwargs)  # Splatting features
         x = self.voxel_pooling(geom, x, *args, **kwargs)  # Projecting on 2d BEV grid

@@ -48,7 +48,7 @@ python3 setup.py develop
 ```
 
 ## Comments can be ignored
-Packages not jet verified: 
+Packages not yet verified: 
 ```
 tqdm
 simple-parsing

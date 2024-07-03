@@ -2,6 +2,7 @@ from bevnet.network import voxelize_pcd_scans
 import torch
 from bevnet.cfg import ModelParams
 from icecream import ic
+import matplotlib.pyplot as plt
 
 from bevnet import network, models
 
@@ -109,7 +110,7 @@ class BevNet(torch.nn.Module):
 
                 # ts.show(pcd_features[0, :25, :, :])
 
-                pcd_features = torch.flip(pcd_features, dims=[2])
+                # pcd_features = torch.flip(pcd_features, dims=[2])
 
                 # Transform to:
                 # ------ x
@@ -119,6 +120,17 @@ class BevNet(torch.nn.Module):
 
                 # Visualize first 25 features for debugging
                 # ts.show(pcd_features[0, :25, :, :])
+
+                # # Convert pcd_features tensor to numpy for visualization
+                # pcd_features_np = pcd_features.cpu().detach().numpy()
+
+                # # Plot the first 25 features of the first point cloud in the batch
+                # fig, axs = plt.subplots(5, 5, figsize=(15, 15))
+                # fig.suptitle('First 25 Point Cloud Features')
+                # for i, ax in enumerate(axs.flat):
+                #     ax.imshow(pcd_features_np[0, i, :, :], cmap='viridis')
+                #     ax.axis('off')
+                # plt.show()
 
                 features.append(pcd_features)
             except Exception as e:
@@ -133,15 +145,36 @@ class BevNet(torch.nn.Module):
             }
             # all_data = {"camera_info": camera_info, "imgs": imgs, "pcd_new": pcd_new}
 
+            # img = imgs[0, 0, :, :, :].cpu().detach().numpy()
+            # img = img.transpose(1, 2, 0)
+            # # left half of image to black
+            # # rgb to bgr
+            # img = img[..., ::-1]
+            # plt.imshow(img)
+            # plt.show()
+
             image_features = self.image_backbone(
                 imgs, rots, trans, intrins, post_rots, post_trans, pcd_new=pcd_new, camera_info=camera_info
             )
 
+            # ts.show(image_features[0, :25, :, :])
+
             # Flip x to minus x and y to minus y
-            image_features = torch.flip(image_features, dims=(2, 3))
+            # image_features = torch.flip(image_features, dims=(2, 3))
 
             # Visualize first 25 features for debugging
             # ts.show(image_features[0, :25, :, :])
+            
+            # # Convert image_features tensor to numpy for visualization
+            # image_features_np = image_features.cpu().detach().numpy()
+
+            # # Plot the first 25 features of the first image in the batch
+            # fig, axs = plt.subplots(5, 5, figsize=(15, 15))
+            # fig.suptitle('First 25 Image Features')
+            # for i, ax in enumerate(axs.flat):
+            #     ax.imshow(image_features_np[0, i, :, :], cmap='viridis')
+            #     ax.axis('off')
+            # plt.show()
 
             features.append(image_features)
 
