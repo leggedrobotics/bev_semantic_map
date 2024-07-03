@@ -26,7 +26,7 @@ class DemoDataset(torch.utils.data.Dataset):
 
         self.img_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "img", "*")))
         self.pcd_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "pcd_filtered", "*")))
-        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_trav", "*")))
+        self.target_paths = sorted(glob.glob(os.path.join(self.cfg_data.data_dir, "bin_trav_filtered", "*")))
 
     def __len__(self):
         # return self.cfg_data.nr_data

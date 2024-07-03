@@ -31,8 +31,8 @@ class ModelParams:
         class AugmentationParams:
             H: int = 540  # 396, 128; 540
             W: int = 720  # 640, 128; 720
-            fH: int = 396  # 396, 128; 512 Images need to be divisible by 32; 544
-            fW: int = 640  # 640, 128; 640 Images need to be divisible by 32; 736
+            fH: int = 544  # 396, 128; 512 Images need to be divisible by 32; 544
+            fW: int = 736  # 640, 128; 640 Images need to be divisible by 32; 736
             resize_lim: List[float] = field(default_factory=lambda: [0.6, 0.7])  # this should be roughly fH/H or fW/W
             bot_pct_lim: List[float] = field(
                 default_factory=lambda: [-0.05, 0.05]  # [-0.05, 0.05]

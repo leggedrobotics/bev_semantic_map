@@ -149,7 +149,7 @@ if __name__ == "__main__":
     num_files = 0
 
     if vis.show_pc1:
-        pc_dir1 = os.path.join(vis.data_dir, "pcd")
+        pc_dir1 = os.path.join(vis.data_dir, "pcd_filtered")
         pc_files1 = sorted([f for f in os.listdir(pc_dir1) if f.endswith(".pt")])
 
         if len(pc_files1) > 0:
@@ -167,7 +167,7 @@ if __name__ == "__main__":
             vis.show_pc2 = False
 
     if vis.show_label:
-        label_dir = os.path.join(vis.data_dir, "bin_trav")
+        label_dir = os.path.join(vis.data_dir, "bin_trav_filtered")
         label_files = sorted([f for f in os.listdir(label_dir) if f.endswith(".pt")])
 
         if len(label_files) > 0:
@@ -183,6 +183,7 @@ if __name__ == "__main__":
             num_files = len(pred_files)
         else:
             vis.show_pred = False
+        
     
     if vis.show_frustrum:
         frustrum_published = False
@@ -234,7 +235,15 @@ if __name__ == "__main__":
 
             # print(pred)
             vis.grid_map_arr(pred, RESOLUTION, LAYERS, x=0, y=0)
-        
+
+        if vis.show_path:
+            path_path = "/home/rschmid/git/perception_tools/scripts/dataset_generation/traversability_estimation/path_with_timestamp.npy"
+            path = np.load(path_path)
+
+            
+
+
+
         if vis.show_frustrum and not frustrum_published:
             frustrum = torch.load(frustrum_path, map_location=torch.device("cpu")).cpu().numpy().astype(np.float32)
             vis.frustrum_process(frustrum, publish=True)

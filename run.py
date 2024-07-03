@@ -26,7 +26,7 @@ import seaborn as sns
 from bevnet.cfg import ModelParams, RunParams, DataParams
 from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
-from bevnet.utils import Timer
+from bevnet.utils import Timer, compute_evaluation
 
 # Global settings
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,10 +35,11 @@ torch.set_printoptions(edgeitems=200)
 # matplotlib.use('Agg')   # To avoid using X server and run it in the background
 
 MODEL_NAME = None
+MODEL_NAME = "2024_03_08_11_02_23"
 # MODEL_NAME = "2024_02_08_15_33_46"    # Specify a specific model
 # MODEL_NAME = "2024_02_19_09_22_53"
 
-POS_WEIGHT = 1  # Num pos / num neg
+POS_WEIGHT = 0.2  # Num neg / num pos
 VISU_TRAIN_EPOCHS = True
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -63,7 +64,7 @@ class BevTraversability:
 
         self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=self._run_cfg.lr)
 
-        self._loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9]), ignore_index=-1)
+        self._loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([POS_WEIGHT, 1-POS_WEIGHT]), ignore_index=-1)
         self._loss.cuda()
         self._loss_mean = torch.tensor(0.0)
 
@@ -255,12 +256,29 @@ class BevTraversability:
             if save_pred:
                 torch.save(x, os.path.join(DATA_PATH, model_name, f"pred_{test_dataset}", f"{j:04d}.pt"))
 
+    def evaluate(self, test_dataset="test"):
+        pred_path = os.path.join(DATA_PATH, MODEL_NAME, f"pred_{test_dataset}")
+        gt_path = os.path.join(self._data_cfg.data_dir, "bin_trav_filtered")
+
+        fig_path = os.path.join(DATA_PATH, MODEL_NAME, "eval_fig")
+        if not os.path.exists(fig_path):
+            os.makedirs(fig_path)
+
+        print(pred_path)
+        print(gt_path)
+                                 
+        compute_evaluation(gt_path=gt_path,
+                       pred_path=pred_path,
+                       fig_path=fig_path,
+                       model_name=pred_path)
+
 
 if __name__ == "__main__":
     # Passing arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", action="store_true", help="""If set trains""")
     parser.add_argument("-p", action="store_true", help="""If set predicts""")
+    parser.add_argument("-e", action="store_true", help="""If set evaluates""")
     parser.add_argument("-l", action="store_true", help="""Logs data on wandb""")
     parser.add_argument('-d', default='p', choices=['t', 'p', 'b'],
                         help="""Dataset specified (t: train, p: pred / test, b: both)""")
@@ -283,5 +301,8 @@ if __name__ == "__main__":
     elif args.p:
         for TEST_DATASET in TEST_DATASETS:
             bt.predict(load_model=True, model_name=MODEL_NAME, save_pred=True, test_dataset=TEST_DATASET)
+    elif args.e:
+        for TEST_DATASET in TEST_DATASETS:
+            bt.evaluate(test_dataset=TEST_DATASET)
     else:
-        raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode)")
+        raise ValueError(f"Unknown mode, please specify -t (for train mode), -p (for test mode), -e (for evaluation mode) or -b (for both modes).")
