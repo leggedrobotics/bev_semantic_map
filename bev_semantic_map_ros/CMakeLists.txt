@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(perception_bev_learning_ros)
+project(bev_semantic_map_ros)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <package>
-  <name>perception_bev_learning_ros</name>
+  <name>bev_semantic_map_ros</name>
   <version>1.0.0</version>
-  <description>The perception_bev_learning_ros package</description>
-  <maintainer email="patelm@ethz.ch">Manthan Patel</maintainer>
+  <description>The bev_semantic_map_ros package</description>
+  <maintainer email="schmirob@ethz.ch">Robin Schmid</maintainer>
+  <author email="patelm@ethz.ch">Robin Schmid</author>
   <author email="patelm@ethz.ch">Manthan Patel</author>
-  <author email="jonfrey@ethz.ch">Jonas Frey</author>
   <license>TODO</license>
 
   <buildtool_depend>catkin</buildtool_depend>
