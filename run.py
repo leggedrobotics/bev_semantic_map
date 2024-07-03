@@ -35,7 +35,7 @@ torch.set_printoptions(edgeitems=200)
 # matplotlib.use('Agg')   # To avoid using X server and run it in the background
 
 MODEL_NAME = None
-MODEL_NAME = "2024_03_08_11_02_23"
+MODEL_NAME = "2024_03_08_10_22_10"
 # MODEL_NAME = "2024_02_08_15_33_46"    # Specify a specific model
 # MODEL_NAME = "2024_02_19_09_22_53"
 

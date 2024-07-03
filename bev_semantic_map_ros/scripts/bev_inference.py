@@ -1,9 +1,10 @@
+#!/usr/bin/env python
+
 import torch
 import numpy as np
 from os.path import join
 from pathlib import Path
 import pickle
-import os
 import sys
 import torchvision.transforms as transforms
 from torchvision.transforms.functional import pad
@@ -19,12 +20,44 @@ from omegaconf import OmegaConf
 import torch.nn as nn
 import torch.nn.functional as F
 
+import re
+import os
+import cv2
+import time
+import json
+from tqdm import tqdm
+import numpy as np
+import torch
+import wandb
+import argparse
+from dataclasses import asdict
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+from bevnet.cfg import ModelParams, RunParams, DataParams
+from bevnet.network.bev_net import BevNet
+from bevnet.dataset import get_bev_dataloader
+from bevnet.utils import Timer, compute_evaluation
+
 sys.path.append("/home/jonfrey/workspaces/bev_new_ws/src/perception_bev_learning")
 
-from perception_bev_learning.loss import LossManagerMulti
-from perception_bev_learning.utils import normalize_img, get_gravity_aligned
+# from perception_bev_learning.loss import LossManagerMulti
+# from perception_bev_learning.utils import normalize_img, get_gravity_aligned
 
-import hydra
+MODEL_NAME = None
+MODEL_NAME = "2024_03_08_10_22_10"
+
+POS_WEIGHT = 0.2  # Num neg / num pos
+VISU_TRAIN_EPOCHS = True
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(BASE_DIR, "bevnet", "data")
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+
 import signal
 import sys
 from functools import partial
@@ -43,37 +76,48 @@ def chop(t, dim=6):
 
 
 class BevInference:
-    def __init__(self):
-        # (TODO) Add the different parameters in initalization
+    def __init__(self, wandb_logging=False, img_backbone=False, pcd_backbone=False):
+        self._model_cfg = ModelParams()
+        self._run_cfg = RunParams()
+        self._data_cfg = DataParams()
 
-        path_checkpoint_folder = (
-            "/data_large/manthan/crf_trained_models/256_multi_consistency_32k"
-            # "/data_large/manthan/crf_trained_models/256_multi_dino"
-            # "/data_large/manthan/crf_trained_models/256_multi_no_img"
-        )
+        if img_backbone:
+            self._model_cfg.image_backbone = "lift_splat_shoot_net"
+        if pcd_backbone:
+            self._model_cfg.pointcloud_backbone = "point_pillars"
 
-        # For now, just use the hardcoded checkpoint path for loading the model
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.img_count = 0
-        # Register the signal handler for Ctrl+C
-        signal.signal(signal.SIGINT, partial(self.signal_handler, self))
+        self._model = BevNet(self._model_cfg)
+        self._model.cuda()
 
-        checkpoint = "/data_large/manthan/crf_trained_models/256_multi_consistency_32k/epoch=24-step=32000---last.ckpt"
-        if checkpoint is None:
-            checkpoints = [str(s) for s in Path(path_checkpoint_folder).rglob("*.ckpt")]
-            checkpoints.sort()
-            checkpoint = checkpoints[-1]
+        self.wandb_logging = wandb_logging
 
-        print(f"Loading the following checkpoint: {checkpoint}")
+        self._optimizer = torch.optim.AdamW(self._model.parameters(), lr=self._run_cfg.lr)
 
-        ckpt = torch.load(checkpoint)
-        print(f"loaded checkpoint")
-        cfg = OmegaConf.load(join(path_checkpoint_folder, "hydra/.hydra/config.yaml"))
-        self._cfg = cfg
+        self._loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([POS_WEIGHT, 1-POS_WEIGHT]), ignore_index=-1)
+        self._loss.cuda()
+        self._loss_mean = torch.tensor(0.0)
 
-        cfg_model = self._cfg.model.network
-        # Initalize Model
-        model = hydra.utils.instantiate(cfg_model)
+        # # For now, just use the hardcoded checkpoint path for loading the model
+        # self.img_count = 0
+        # # Register the signal handler for Ctrl+C
+        # signal.signal(signal.SIGINT, partial(self.signal_handler, self))
+
+        # # checkpoint = "/data_large/manthan/crf_trained_models/256_multi_consistency_32k/epoch=24-step=32000---last.ckpt"
+        # if checkpoint is None:
+        #     checkpoints = [str(s) for s in Path(weight_dir).rglob("*.ckpt")]
+        #     checkpoints.sort()
+        #     checkpoint = checkpoints[-1]
+
+        # print(f"Loading the following checkpoint: {checkpoint}")
+
+        # ckpt = torch.load(checkpoint)
+        # print(f"loaded checkpoint")
+        # cfg = OmegaConf.load(join(weight_dir, "hydra/.hydra/config.yaml"))
+        # self._cfg = cfg
+
+        # cfg_model = self._cfg.model.network
+        # # Initalize Model
+        # model = hydra.utils.instantiate(cfg_model)
 
         # loss_dict = {
         #     "_target_": "perception_bev_learning.loss.LossManagerMulti",
@@ -82,19 +126,58 @@ class BevInference:
 
         # loss_config = OmegaConf.create(loss_dict)
         # self._loss_manager = hydra.utils.instantiate(loss_config)
-        print(model)
+        # print(model)
 
-        state_dict = {
-            k[len("net.") :] if k.startswith("net.") else k: v
-            for k, v in ckpt["state_dict"].items()
-            if "net" in k
-        }
+        # state_dict = {
+        #     k[len("net.") :] if k.startswith("net.") else k: v
+        #     for k, v in ckpt["state_dict"].items()
+        #     if "net" in k
+        # }
 
-        model.load_state_dict(state_dict)
-        model.to(self.device)
+        # model.load_state_dict(state_dict)
+        # model.to(self.device)
 
-        self._model = model
+        # self._model = model
+        # self._model.eval()
+
+        self._model.to(DEVICE)
+
+        # If no specific name is given load the latest model
+        if model_name is None:
+            all_directories = [d for d in os.listdir(DATA_PATH) if
+                                os.path.isdir(os.path.join(DATA_PATH, d))]
+            sorted_directories = sorted(all_directories)
+            model_name = sorted_directories[-1]
+
+        try:
+            weights_dir = os.path.join(DATA_PATH, model_name, "weights")
+            all_weights = [f for f in os.listdir(weights_dir) if f.endswith('.pth')]
+
+            # Function to extract all numbers from the filename and return them as a tuple of integers
+            def extract_numbers(s):
+                numbers = re.findall(r'\d+', s)
+                return tuple(int(number) for number in numbers)
+
+            # Sort files based on the numerical parts extracted
+            sorted_weights = sorted(all_weights, key=extract_numbers)
+
+            # Select the last file after sorting
+            latest_weight_file = sorted_weights[-1]
+
+            print(f"Using model {latest_weight_file}")
+
+            self._model.load_state_dict(
+                torch.load(
+                    os.path.join(weights_dir, latest_weight_file),
+                    map_location=torch.device(DEVICE)
+                ), strict=True
+            )
+        except:
+            ValueError("This model configuration does not exist!")
+
+        # Set the model to evaluation mode
         self._model.eval()
+
 
         self.scale_target = nn.ParameterDict()
         self.scale_aux = nn.ParameterDict()
@@ -171,7 +254,6 @@ class BevInference:
         imgTransList: List[np.ndarray],
         imgIntrinsics: List[np.ndarray],
         cloud,
-        gvom,
         cloudTF,
         rawEleMap: np.ndarray,
         yaw,
@@ -250,26 +332,26 @@ class BevInference:
 
         self.pcd_size_list.append(pcd_new["points"].shape[0])
 
-        # GVOM Data
-        gvom = torch.from_numpy(np.asarray(gvom).astype(np.float32)).to(self.device)
-        gvom = torch.cat(
-            [gvom, torch.ones((gvom.shape[0], 1), device=gvom.device)], dim=1
-        )
-        H_sensor_gravity__map = torch.from_numpy(
-            np.asarray(T_gravity__map).astype(np.float32)
-        ).to(self.device)
-        sensor_gravity_points = (H_sensor_gravity__map.to(self.device) @ gvom.T).T
-        sensor_gravity_points = sensor_gravity_points[:, :3]
+        # # GVOM Data
+        # gvom = torch.from_numpy(np.asarray(gvom).astype(np.float32)).to(self.device)
+        # gvom = torch.cat(
+        #     [gvom, torch.ones((gvom.shape[0], 1), device=gvom.device)], dim=1
+        # )
+        # H_sensor_gravity__map = torch.from_numpy(
+        #     np.asarray(T_gravity__map).astype(np.float32)
+        # ).to(self.device)
+        # sensor_gravity_points = (H_sensor_gravity__map.to(self.device) @ gvom.T).T
+        # sensor_gravity_points = sensor_gravity_points[:, :3]
 
-        gvom_new = {}
-        stacked_scan_indexes = []
-        stacked_scan_indexes = torch.tensor(
-            [scan.shape[0] for scan in [sensor_gravity_points]]
-        )
+        # gvom_new = {}
+        # stacked_scan_indexes = []
+        # stacked_scan_indexes = torch.tensor(
+        #     [scan.shape[0] for scan in [sensor_gravity_points]]
+        # )
 
-        gvom_new["points"] = sensor_gravity_points.to(self.device).contiguous()
-        gvom_new["scan"] = stacked_scan_indexes.to(self.device)
-        gvom_new["batch"] = stacked_scan_indexes.to(self.device)
+        # gvom_new["points"] = sensor_gravity_points.to(self.device).contiguous()
+        # gvom_new["scan"] = stacked_scan_indexes.to(self.device)
+        # gvom_new["batch"] = stacked_scan_indexes.to(self.device)
 
         # Elevation Processing
         # rawEleMap = rawEleMap[::-1, ::-1].transpose().astype(np.float32)
@@ -351,7 +433,6 @@ class BevInference:
                     post_rots=post_rots,
                     post_trans=post_trans,
                     pcd=pcd_new,
-                    gvom=gvom_new,
                     aux=aux,
                     H_sg_map=H_sensor_gravity__map,
                     batch_idx=self.img_count,
