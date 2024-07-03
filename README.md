@@ -1,5 +1,4 @@
-# BEVnet + anomaly detection
-
+# BEV Semantic Map
 ```
 cd ~/git/bevnet/bevnet/network/ops
 python3 setup.py develop
