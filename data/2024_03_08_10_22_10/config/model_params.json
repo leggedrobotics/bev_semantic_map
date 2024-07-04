@@ -1,0 +1,72 @@
+{
+  "dummy": false,
+  "lift_splat_shoot_net": {
+    "grid": {
+      "xbound": [
+        -3.2,
+        3.2,
+        0.05
+      ],
+      "ybound": [
+        -3.2,
+        3.2,
+        0.05
+      ],
+      "zbound": [
+        -5.0,
+        5.0,
+        10.0
+      ],
+      "dbound": [
+        1.0,
+        3.2,
+        0.05
+      ]
+    },
+    "augmentation": {
+      "H": 540,
+      "W": 720,
+      "fH": 396,
+      "fW": 640,
+      "resize_lim": [
+        0.6,
+        0.7
+      ],
+      "bot_pct_lim": [
+        -0.05,
+        0.05
+      ],
+      "rot_lim": [
+        -5.4,
+        5.4
+      ],
+      "rand_flip": false
+    },
+    "output_channels": 64,
+    "bevencode": false
+  },
+  "point_pillars": {
+    "voxel_size": [
+      0.1,
+      0.1,
+      4.0
+    ],
+    "point_cloud_range": [
+      -3.2,
+      -3.2,
+      -2.0,
+      3.2,
+      3.2,
+      2.0
+    ],
+    "max_num_points": 32,
+    "max_voxels": [
+      16000,
+      40000
+    ],
+    "output_channels": 96
+  },
+  "image_backbone": "lift_splat_shoot_net",
+  "pointcloud_backbone": "point_pillars",
+  "fusion_backbone": "CNN"
+}

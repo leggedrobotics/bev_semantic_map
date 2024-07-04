@@ -1,0 +1,8 @@
+{
+  "nr_data": 994,
+  "training_batch_size": 4,
+  "epochs": 50,
+  "lr": 0.001,
+  "weight_decay": 0.0001,
+  "log_name": "2024_03_08_10_22_10_img_lift_splat_shoot_net_pcd_point_pillars"
+}
