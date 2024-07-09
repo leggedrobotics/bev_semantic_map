@@ -67,8 +67,7 @@ public:
     : nh_(node)
     , pnh_(private_node)
     , it_(private_node)
-    , filterChainMicro_("grid_map::GridMap")
-    , filterChainShort_("grid_map::GridMap"){};
+    , filterChain_("grid_map::GridMap"){};
   ~BevInferenceROS(){};  // Destructor
 
   // Functions
@@ -92,23 +91,26 @@ private:
   // Callback Functions for the camera images
   void camFrontCb(const sensor_msgs::ImageConstPtr& cam_ptr);
   void camBackCb(const sensor_msgs::ImageConstPtr& cam_ptr);
-  void camLeftCb(const sensor_msgs::ImageConstPtr& cam_ptr);
-  void camRightCb(const sensor_msgs::ImageConstPtr& cam_ptr);
+  // void camLeftCb(const sensor_msgs::ImageConstPtr& cam_ptr);
+  // void camRightCb(const sensor_msgs::ImageConstPtr& cam_ptr);
 
   // Callback Functions for the camera info topics
-  void infoLeftCb(const sensor_msgs::CameraInfoConstPtr& info_ptr);
-  void infoRightCb(const sensor_msgs::CameraInfoConstPtr& info_ptr);
+  // void infoLeftCb(const sensor_msgs::CameraInfoConstPtr& info_ptr);
+  // void infoRightCb(const sensor_msgs::CameraInfoConstPtr& info_ptr);
   void infoFrontCb(const sensor_msgs::CameraInfoConstPtr& info_ptr);
   void infoBackCb(const sensor_msgs::CameraInfoConstPtr& info_ptr);
 
-  // Velodyne Cloud callback
-  void velodyneCb(const sensor_msgs::PointCloud2ConstPtr& cloud_ptr);
+  // // Velodyne Cloud callback
+  // void velodyneCb(const sensor_msgs::PointCloud2ConstPtr& cloud_ptr);
+
+  // Merged Cloud callback
+  void mergedCb(const sensor_msgs::PointCloud2ConstPtr& cloud_ptr);
 
   // Raw Elevation Map callback
   void elevationMapCb(const grid_map_msgs::GridMapConstPtr& msg);
 
-  // Voxel Map callback (For GVOM Cloud) (TODO)
-  void gvomCb(const sensor_msgs::PointCloud2ConstPtr& gvom_ptr);
+  // // Voxel Map callback (For GVOM Cloud) (TODO)
+  // void gvomCb(const sensor_msgs::PointCloud2ConstPtr& gvom_ptr);
 
   // Timer-based callback for inference
   void inferenceCb();
@@ -121,55 +123,43 @@ private:
 
   // Variables
   ros::NodeHandle nh_, pnh_;           // ROS Nodehandles
-  ros::Subscriber subVelodyneMerged_;  // ROS Subscriber for merged velodyne Pointcloud
-  image_transport::Subscriber subCamLeft_, subCamRight_, subCamFront_, subCamBack_;  // ROS Subscribers for the images
-  ros::Subscriber subCamInfoLeft_, subCamInfoRight_, subCamInfoFront_,
-      subCamInfoBack_;                          // ROS Subscribers for the Camera Infos
-  ros::Publisher pubGridMapMicro_, pubGridMapMicroInfo_;  // ROS Publisher for output of network
-  ros::Publisher pubGridMapShort_, pubGridMapShortInfo_;  // ROS Publisher for output of network
-  ros::Publisher pubGridMapMicroVel_, pubGridMapMicroVelInfo_;  // ROS Publisher for output of network
+  ros::Subscriber subCloud_;  // ROS Subscriber for merged velodyne Pointcloud
+  image_transport::Subscriber subCamFront_, subCamBack_;  // ROS Subscribers for the images
+  ros::Subscriber subCamInfoFront_, subCamInfoBack_;                          // ROS Subscribers for the Camera Infos
+  ros::Publisher pubGridMap_, pubGridMapInfo_;  // ROS Publisher for output of network
   ros::Timer inferenceTimer_;                   // Timer for Network inference
   ros::Timer camInfoTimer_;                     // Timer for Network inference
   image_transport::ImageTransport it_;          // Image transport
   ros::Subscriber subElevationMap_;             // ROS Subscriber for Raw elevation Map
 
-  ros::Subscriber subGvom_;  // ROS Subscriber for GVOM cloud
+  // ros::Subscriber subGvom_;  // ROS Subscriber for GVOM cloud
 
   // Transform lookup
   // Does it make sense to have multiple buffers for each thread ?
 
   // Buffer for Cameras
-  std::unique_ptr<tf2_ros::Buffer> tfBufferFC_, tfBufferLC_, tfBufferRC_, tfBufferBC_;
-  std::unique_ptr<tf2_ros::TransformListener> tfListenerFC_, tfListenerLC_, tfListenerRC_, tfListenerBC_;
+  std::unique_ptr<tf2_ros::Buffer> tfBufferFC_, tfBufferBC_;
+  std::unique_ptr<tf2_ros::TransformListener> tfListenerFC_, tfListenerBC_;
 
-  // Buffer for Velodyne
-  std::unique_ptr<tf2_ros::Buffer> tfBufferV_;
-  std::unique_ptr<tf2_ros::TransformListener> tfListenerV_;
-
-  // Buffer for Gridmap
-  std::unique_ptr<tf2_ros::Buffer> tfBufferG_;
-  std::unique_ptr<tf2_ros::TransformListener> tfListenerG_;
+  // Buffer for Cloud
+  std::unique_ptr<tf2_ros::Buffer> tfBufferC_;
+  std::unique_ptr<tf2_ros::TransformListener> tfListenerC_;
 
   // Mutex
-  std::mutex velodyneMtx_, voxelMapMtx_, elevationMapMtx_, frontMtx_, backMtx_, leftMtx_, rightMtx_;
+  std::mutex cloudMtx_, elevationMapMtx_, frontMtx_, backMtx_;
 
   // Booleans for message
-  bool camInfoLeftRec_ = false;
-  bool camInfoRightRec_ = false;
   bool camInfoFrontRec_ = false;
   bool camInfoBackRec_ = false;
   bool camInfoInit_ = false;
-  bool camLeftRec_ = false;
-  bool camRightRec_ = false;
   bool camFrontRec_ = false;
   bool camBackRec_ = false;
-  bool velodyneRec_ = false;
+  bool cloudRec_ = false;
   bool gridmapRec_ = false;
-  bool gvomRec_ = false;
 
   // Eigen Matrices for the Projection Matrices (P)
-  Eigen::Matrix<double, 3, 4, Eigen::RowMajor> P_left_;
-  Eigen::Matrix<double, 3, 4, Eigen::RowMajor> P_right_;
+  // Eigen::Matrix<double, 3, 4, Eigen::RowMajor> P_left_;
+  // Eigen::Matrix<double, 3, 4, Eigen::RowMajor> P_right_;
   Eigen::Matrix<double, 3, 4, Eigen::RowMajor> P_front_;
   Eigen::Matrix<double, 3, 4, Eigen::RowMajor> P_back_;
 
@@ -181,8 +171,8 @@ private:
 
   // Image Vectors
   std::vector<ColMatrixXf> frontImage_;
-  std::vector<ColMatrixXf> leftImage_;
-  std::vector<ColMatrixXf> rightImage_;
+  // std::vector<ColMatrixXf> leftImage_;
+  // std::vector<ColMatrixXf> rightImage_;
   std::vector<ColMatrixXf> backImage_;
 
   // Transforms
@@ -190,8 +180,8 @@ private:
   Matrix4d T_map__base_link_ = Matrix4d::Identity();
   Matrix4d T_map__grid_map_center_ = Matrix4d::Identity();
   Matrix4d T_map__front_cam_link_ = Matrix4d::Identity();
-  Matrix4d T_map__left_cam_link_ = Matrix4d::Identity();
-  Matrix4d T_map__right_cam_link_ = Matrix4d::Identity();
+  // Matrix4d T_map__left_cam_link_ = Matrix4d::Identity();
+  // Matrix4d T_map__right_cam_link_ = Matrix4d::Identity();
   Matrix4d T_map__back_cam_link_ = Matrix4d::Identity();
   Matrix4d T_sensor_origin_link__map_ = Matrix4d::Identity();
 
@@ -204,7 +194,7 @@ private:
   bool useProbOther_ = true;
 
   // GVOM Data
-  RowMatrixXf gvom_ = RowMatrixXf::Zero(10000, 3);
+  // RowMatrixXf gvom_ = RowMatrixXf::Zero(10000, 3);
 
   // Grid Map Data
   GridMapMsg::ConstPtr ele_msg_;
@@ -220,30 +210,30 @@ private:
   uint64_t imgTs_ = 0;
 
   // Params
-  std::string mapFrame_ = "crl_rzr/map";
-  std::string egoFrame_ = "crl_rzr/sensor_origin_link";
+  std::string mapFrame_ = "map_o3d_localization_manager";
+  std::string egoFrame_ = "base_inverted";
   int infFreq_ = 10;
   int pclMinPts_ = 1000;
   int voxelMapMinPts_ = 1000;
   int resizeWidth_ = 640;
   int resizeHeight_ = 396;
 
-  int mapWidthMicro_ = 500;  // gridmap width and height
-  float resMicro_ = 0.2;     // Resolution of micro range map
+  int mapWidth_ = 500;  // gridmap width and height
+  float res_ = 0.2;     // Resolution of micro range map
   // float lengthMicro_ = 100; // Resolution * Width
 
-  int mapWidthShort_ = 400;  // gridmap width and height
-  float resShort_ = 0.5;     // Resolution of short range map
+  // int mapWidthShort_ = 400;  // gridmap width and height
+  // float resShort_ = 0.5;     // Resolution of short range map
   // float lengthShort_ =
 
   // Python handler for pybind
   py::object pyHandle_;
 
   // Filter chain object
-  filters::FilterChain<grid_map::GridMap> filterChainShort_;
-  filters::FilterChain<grid_map::GridMap> filterChainMicro_;
+  filters::FilterChain<grid_map::GridMap> filterChain_;
+  // filters::FilterChain<grid_map::GridMap> filterChainMicro_;
 
   //! Filter chain parameters name.
-  std::string filterChainParametersNameMicro_;
-  std::string filterChainParametersNameShort_;
+  std::string filterChainParametersName_;
+  // std::string filterChainParametersNameShort_;
 };
