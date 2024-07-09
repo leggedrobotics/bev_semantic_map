@@ -1,0 +1,36 @@
+general:
+  process_multiple: False
+  max_threads: 1 # Set to 1 or less if you do not want to do multi-threading
+  rosbags: "/home/patelm/Downloads/dodo_uetliberg/2023-09-20-10-44-50"
+  dest: "/home/patelm/Downloads/dodo_uetliberg/uetliberg_h5" # Directory where the output will be stored, shouldn't end with /
+  chunk_len: None
+  compression: None
+  bag_keywords: ["voxelmap"]
+  tf_keyword: "bev_tf"
+  max_samples: None # Set to None to process all samples
+
+dataset:
+  anchor_obs_name: voxelmap_micro
+  anchor_dist_threshold: 1
+  reference_frame: map
+
+  default_converter:
+    max_ts: 0.1
+    buffer_size: 5
+    store_once: False
+    store_always: False # Setting this to True will store all messages in the H5py
+    merge_N_temporal: -1 # Setting this to greater than 1 will store N-1 past temporal messages from the buffer along with the curr message
+
+  converters:
+    voxelmap:
+      obs_name: voxelmap_micro
+      topic: /voxel_map
+      max_ts: 0.5
+      buffer_size: 10
+      converter:
+        _target_: converters.pointcloud.PointCloudConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "footprint"
+          - "base"
+          - "base_inverted"

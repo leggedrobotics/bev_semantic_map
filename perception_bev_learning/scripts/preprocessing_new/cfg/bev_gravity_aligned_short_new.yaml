@@ -1,0 +1,71 @@
+h5_files: "/media/manthan/Manthan/RSL/bev_viz/halter/h5_dem" # The directory consisting of h5py files or the path to a single h5py file
+# config_file: "/data_ssd/manthan/bev_traversability/halter_ranch/h5_gt/dataset_config.pkl" # Path to .pkl config file (Should contain info for all H5py files if there are multiple)
+visualize: False
+write: True
+
+anchor_key: multisense_front
+
+layer_keys:
+  raw_ele_map_short:
+    output_key: g_raw_ele_map_short
+    resolution: 0.8 # in meters
+    HW: [256, 256]
+
+  traversability_map_micro:
+    output_key: g_traversability_map_micro
+    resolution: 0.2 # in meters
+    HW: [512, 512]
+
+  raw_ele_map_micro:
+    output_key: g_raw_ele_map_micro
+    resolution: 0.2 # in meters
+    HW: [512, 512]
+
+  traversability_map_micro_gt:
+    output_key: g_traversability_map_micro_gt
+    resolution: 0.2 # in meters
+    HW: [512, 512]
+  
+  traversability_map_short:
+    output_key: g_traversability_map_short
+    resolution: 0.8 # in meters
+    HW: [256, 256]
+
+  traversability_map_short_gt:
+    output_key: g_traversability_map_short_gt
+    resolution: 0.8 # in meters
+    HW: [256, 256]
+
+gps_o_key: gps_orientation
+gps_p_key: gps_pose
+dem_layer_key: raw_ele_map_short # Layer Key to be used for performing ICP and fusion
+# dem_layer_name: elevation_fused
+elevation_layers: ["elevation", "elevation_raw"]
+rot_threshold: 3 #In degrees maximum allowable ICP correction in each axis (RPY)
+trans_threshold: 1 #In metres maximum allowable ICP correction in X and Y directions 
+# Current Code has lots of hard-coding so might not work with all params changed here
+dem_config:
+  input_dem: "/home/jonfrey/Downloads/halter_ranch.tif" # Helendale pendleton_alpha_beach camp_roberts
+  width_gridmap: 300 # in Metres
+  dem_res: 1 # in Meters (This is the highest resolution available)
+  crop_gridmap_micro: [110, 110]
+  crop_gridmap_tolerance: [150, 150]
+  crop_gridmap_short: [210, 210]
+  crop_gridmap_short_tolerance: [250, 250]
+  elevation_layer: "elevation_raw"
+  confidence_layer: "confidence"
+  output_keys:
+    short:
+      output_key: g_elevation_map_short_dem
+      layers: ["elevation_dem"]
+      resolution: 0.8
+      HW: [256, 256]
+    micro:
+      output_key: g_elevation_map_micro_dem
+      layers: ["elevation_dem"] # Dont change the order # "elevation_fused"
+      resolution: 0.2
+      HW: [512, 512]
+
+  # ICP params
+  voxel_size: 1
+

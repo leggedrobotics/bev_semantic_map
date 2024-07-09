@@ -1,0 +1,223 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /env: deegan
+
+image_size: [396, 640]
+point_cloud_range: [-51.2, -51.2, -10, 51.2, 51.2, 10]
+voxel_size: [0.2, 0.2, 20]
+batch_size: 1
+num_workers: 2
+persistent_workers: false
+prefetch_factor: 2
+pkl_cfg_file: dataset_config_clean_seperation_subsample_10.pkl
+use_images: true
+use_lidar: false
+use_raw_elevation: false
+use_gvom: false
+freeze_backbones: false
+sequence_length: 4
+gmr_resolution: 0.2
+
+general:
+  name: "refactor_rot/visualize_temporal"
+  dataset_dir: ${env.dataset_root_dir}
+  result_dir: ${env.result_dir}
+  model_path: ${general.result_dir}/${general.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+  tags: ["refactor", "dem"]
+  train: true   # set false to skip model training
+  test: true
+  ckpt_path: null # simply provide checkpoint path to resume training
+  seed: 41 # seed for random number generators in pytorch, numpy and python.random
+
+trainer:
+  _target_: lightning.pytorch.trainer.Trainer
+  precision: 16-mixed
+  accumulate_grad_batches: 1
+  fast_dev_run: false
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  limit_test_batches: 1.0
+  max_epochs: -1
+  max_steps: 1000
+  num_sanity_val_steps:  0
+  check_val_every_n_epoch: 1
+  accelerator: gpu
+  detect_anomaly: false
+  profiler: false  # 
+  devices: 1  # All
+  deterministic: false
+  # strategy: str = None  # ddp # TODO
+
+datamodule:
+  _target_: perception_bev_learning.dataset.BEVDataModuleTemporal
+
+model:
+  _target_: perception_bev_learning.lightning.LightningBEVTemporal
+  path: ${general.model_path}
+  sequence_length: ${sequence_length}
+  batch_size: ${batch_size}
+
+  target_layers:
+    wheel_risk: 
+      name: wheel_risk
+      loss_scale: 2.0
+      pre_loss_function:
+        _target_: torch.sigmoid
+        _partial_: true
+      loss_function:
+        _target_: perception_bev_learning.loss.wheel_risk_mse
+        _partial_: true
+      post_loss_function:
+        _target_: perception_bev_learning.loss.skip
+        _partial_: true
+    elevation: 
+      name: elevation
+      loss_scale: 1.0
+      pre_loss_function:
+        _target_: perception_bev_learning.loss.skip
+        _partial_: true
+      loss_function:
+        _target_: perception_bev_learning.loss.elevation_fused_l1
+        _partial_: true
+      post_loss_function:
+        _target_: perception_bev_learning.loss.skip
+        _partial_: true
+
+  visualizer:
+    # Plotting Configuration
+    train: -1
+    val: -1
+    test: -1
+    plot_sequence: false
+    # Plotting BEV Maps
+    plot_all_risks: false
+    plot_all_elevations: false
+    plot_all_maps: true
+    # Plotting Images
+    plot_raw_images: true
+    # Plotting Project data onto images
+    project_gt_BEV_on_image: false
+    project_pred_BEV_on_image: false
+    # Generate Summary Dashboard
+    plot_dashboard: true
+
+  network:
+    # specify the main network module (BevTravNet in our case)
+    _target_: perception_bev_learning.models.fusion_models.BevTravNetTemporal
+    cfg_model:
+      use_images: ${use_images}
+      use_lidar: ${use_lidar}
+      use_raw_elevation: ${use_raw_elevation}
+      aux_layers: ${datamodule.dataset.aux_layers}
+      use_gvom: ${use_gvom}
+      gmr_resolution: ${gmr_resolution}
+      sequence_length: ${sequence_length}
+      use_temporal_fusion: ${use_temporal_fusion}
+      use_seperate_decoder: false # TODO
+      encoders:
+        camera:
+          backbone:
+            type: EfficientNetB
+            model_name: efficientnet-b0 # b0-b7
+            drop_rate: 0.2
+            out_indices: [2, 3, 4] # Use 2,3,4 for all efficientNetb0 - b7
+            
+          neck:
+            type: GeneralizedLSSFPN
+            in_channels: [40, 112, 320] 
+            #b0[40, 112, 320] #b1[40, 112, 320] #b2[48, 120, 352] #b3[48,136,384]
+            #b4[56, 160, 448] #b5[64, 176, 512] #b6[72, 200, 576] #b7[80, 224, 640]
+            out_channels: 256
+            start_level: 0
+            num_outs: 3
+            norm_cfg:
+              type: BN2d
+              requires_grad: true
+            act_cfg:
+              type: ReLU
+              inplace: true
+            upsample_cfg:
+              mode: bilinear
+              align_corners: false
+          vtransform:
+            type: LSSTransform
+            in_channels: 256
+            out_channels: 80
+            image_size: ${image_size}
+            # feature_size: ${image_size}//8 #TODO
+            feature_downsample: 8
+            xbound: [-51.2, 51.2, 0.2]
+            ybound: [-51.2, 51.2, 0.2]
+            zbound: [-20.0, 20.0, 40.0]
+            dbound: [1.0, 60.0, 0.5]
+            downsample: 1
+        lidar:
+          voxelize:
+            max_num_points: 16
+            point_cloud_range: ${point_cloud_range}
+            voxel_size: ${voxel_size}
+            max_voxels: [32000, 64000]
+          voxelize_reduce: false # Keep this false -> Useful only for 3D Sparse Convs
+          backbone:
+            type: PointPillarsNet
+            voxel_encoder:
+              type: PillarFeatureNet
+              in_channels: 3 # (x, y, z)
+              feat_channels: [64]
+              with_distance: False
+              voxel_size: ${voxel_size}
+              point_cloud_range: ${point_cloud_range}
+            middle_encoder:
+              type: PointPillarsScatter
+              in_channels: 64
+              output_shape: [512, 512] # (x_max-x_min / x_res, y_max-y_min / y_res)
+            backbone:
+              type: SECOND
+              in_channels: 64
+              out_channels: [64, 128, 256]
+              layer_nums: [3, 5, 5]
+              layer_strides: [2, 2, 2]
+            neck:
+              type: SECONDFPN
+              in_channels: [64, 128, 256]
+              out_channels: [32, 32, 32]
+              upsample_strides: [1, 2, 4]
+              use_conv_for_no_stride: true
+              upsample_interpolate: 2
+      fuser:
+        type: ConvFuser
+        in_channels: [80, 96] # This value will get overwritten from the fusion model init
+        out_channels: 256
+      decoder:
+        backbone:
+          type: BEVDecoder
+          in_channels: 256
+          out_channels: 128
+          p_dropout: 0
+        neck:
+          type: EmptyNeck
+      head:
+        type: BEVSimpleHead
+        in_channels: 128
+        channels_wheel_risk: 1
+        channels_elevation: 1
+        scale_factor: 1
+
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 1.0e-3
+    weight_decay: 1.0e-7
+
+  scheduler:
+    _target_: torch.optim.lr_scheduler.OneCycleLR
+    _partial_: true
+    max_lr: ${model.optimizer.lr}
+    total_steps: ${trainer.max_steps}
+    pct_start: 0.1
+    div_factor: 25.0
+    final_div_factor: 10000.0

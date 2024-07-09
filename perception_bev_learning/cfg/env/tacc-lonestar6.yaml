@@ -1,0 +1,5 @@
+# dataset_root_dir: /scratch/09654/mhpatel/data/h5_gt
+# result_dir: /work/09654/mhpatel/ls6/results
+dataset_root_dir: /scratch/09654/mhpatel/data/camp_roberts_rotated_old/final_d2_y6_rotated_old
+# dataset_root_dir: /scratch/09654/mhpatel/data/camp_roberts_rotated_new
+result_dir: /work/09654/mhpatel/ls6/results

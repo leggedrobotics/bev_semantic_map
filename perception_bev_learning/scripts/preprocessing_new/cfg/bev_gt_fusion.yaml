@@ -1,0 +1,39 @@
+process_multiple: False # (TODO) For parallel processing 
+h5_files: "/data_large/manthan/camp_roberts_d3/depth_h5_gt" # The directory consisting of h5py files or the path to a single h5py file
+# config_file: "/data_ssd/manthan/bev_traversability/halter_ranch/h5_gt/dataset_config.pkl" # Path to .pkl config file (Should contain info for all H5py files if there are multiple)
+HW_ext: [720, 720] # Size of the GT Gridmap (We use something close to _/2)
+override: True
+visualize: False
+write: True
+
+dataset:
+  # Here specify the key for the GT Fusion Maps along with the layers and the operations
+  trav_map_micro:
+    obs_name: traversability_map_micro
+    gt_obs_name: traversability_map_micro_gt
+    reliable_threshold: 0.7
+    max_acc_time: 100 # In seconds
+    # reliable_layer: "robust_reliable" # (TODO) layer to use for reliability (reliable or robust_reliable)
+    fusions:
+      elevation:
+        _target_: fusers.fusion.mean
+      unknown:
+        _target_: fusers.fusion.maximum # (TODO) Fix this (init and probably min is required)
+      reliable_filled:
+        _target_: fusers.fusion.maximum
+      reliable:
+        _target_: fusers.fusion.maximum
+      wheel_risk:
+        _target_: fusers.fusion.latest
+      confidence:
+        _target_: fusers.fusion.maximum
+      robust_reliable:
+        _target_: fusers.fusion.maximum
+      prob_trail:
+        _target_: fusers.fusion.latest
+      prob_trail_filled:
+        _target_: fusers.fusion.latest
+      wheel_lethal:
+        _target_: fusers.fusion.latest
+      prob_obstacle_risk:
+        _target_: fusers.fusion.latest

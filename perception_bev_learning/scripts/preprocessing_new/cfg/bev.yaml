@@ -1,0 +1,179 @@
+general:
+  process_multiple: True
+  max_threads: 1 # Set to 1 or less if you do not want to do multi-threading
+  rosbags: "/data_large/manthan/camp_roberts_new/bag_files"
+  dest: "/data_large/manthan/camp_roberts_new/h5_no_gt" # Directory where the output will be stored, shouldn't end with /
+  chunk_len: None
+  compression: None
+  bag_keywords: ["bev_color", "bev_trav", "bev_velodyne", "bev_gvom", "gps"]
+  tf_keyword: "_bev_tf_"
+  max_samples: None # Set to None to process all samples
+
+dataset:
+  anchor_obs_name: multisense_front
+  anchor_dist_threshold: 0.5
+  reference_frame: crl_rzr/map
+  resize: [640, 396]
+
+  default_converter:
+    max_ts: 0.1
+    buffer_size: 5
+    store_once: False
+    store_always: False # Setting this to True will store all messages in the H5py
+    merge_N_temporal: -1 # Setting this to greater than 1 will store N-1 past temporal messages from the buffer along with the curr message
+
+  converters:
+    front_rgb:
+      obs_name: multisense_front
+      topic: /crl_rzr/multisense_front/aux/semantic_image_rect_color/compressed
+      buffer_size: 10
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        aux_tfs:
+          - ["utm", "crl_rzr/sensor_origin_link"] # [Reference , Target]
+          - ["utm", "crl_rzr/map"] # [Reference , Target]
+        resize: ${dataset.resize}
+        
+    front_camera_info:
+      obs_name: multisense_front-camera_info
+      topic: /crl_rzr/multisense_front/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+
+    gps_orientation:
+      obs_name: gps_orientation
+      topic: /crl_rzr/duro/piksi/imu/data
+      max_ts: 0.1
+      buffer_size: 20
+      converter:
+        _target_: converters.gps.GPSOrientationConverter
+    
+    gps_pose:
+      obs_name: gps_pose
+      topic: /crl_rzr/duro/piksi/pos_llh_cov
+      max_ts: 0.1
+      buffer_size: 20
+      converter:
+        _target_: converters.gps.GPSPosConverter
+
+    left_rgb:
+      obs_name: multisense_left
+      topic: /crl_rzr/multisense_left/aux/semantic_image_rect_color/compressed
+      max_ts: 0.05
+      buffer_size: 15
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        resize: ${dataset.resize}
+
+    left_camera_info:
+      obs_name: multisense_left-camera_info
+      topic: /crl_rzr/multisense_left/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+
+    right_rgb:
+      obs_name: multisense_right
+      topic: /crl_rzr/multisense_right/aux/semantic_image_rect_color/compressed
+      max_ts: 0.05
+      buffer_size: 15
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        resize: ${dataset.resize}
+
+    right_camera_info:
+      obs_name: multisense_right-camera_info
+      topic: /crl_rzr/multisense_right/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+    
+    back_rgb:
+      obs_name: multisense_back
+      topic: /crl_rzr/multisense_back/aux/semantic_image_rect_color/compressed
+      max_ts: 0.05
+      buffer_size: 15
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        resize: ${dataset.resize}
+
+    back_camera_info:
+      obs_name: multisense_back-camera_info
+      topic: /crl_rzr/multisense_back/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+
+    traversability_map_micro:
+      obs_name: traversability_map_micro
+      topic: /crl_rzr/traversability_map/map_micro
+      max_ts: 0.5
+      buffer_size: 10
+      store_always: True
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation"
+          - "unknown"
+          - "reliable_filled"
+          - "reliable"
+          - "wheel_risk"
+          - "confidence"
+          - "prob_trail"
+          - "prob_trail_filled"
+          - "wheel_lethal"
+          - "prob_obstacle_risk"
+    
+    raw_ele_map_micro:
+      obs_name: raw_ele_map_micro
+      topic: /crl_rzr/elevation_map/map_micro_debug
+      max_ts: 0.5
+      buffer_size: 10
+      store_always: False
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation_raw"
+          - "num_points"
+    
+    velodyne_merged:
+      obs_name: velodyne_merged_points
+      topic: /crl_rzr/velodyne_merged_points_unfiltered
+      max_ts: 0.05
+      buffer_size: 25
+      merge_N_temporal: 10 # Used only when > 1, otherwise no effect
+      converter:
+        _target_: converters.pointcloud.PointCloudConverter
+        reference_frame: ${dataset.reference_frame}
+
+    gvom_micro:
+      obs_name: pointcloud_map-points_micro
+      topic: /crl_rzr/pointcloud_map/points_micro
+      max_ts: 0.5
+      buffer_size: 10
+      converter:
+        _target_: converters.pointcloud.PointCloudConverter
+        reference_frame: ${dataset.reference_frame}
