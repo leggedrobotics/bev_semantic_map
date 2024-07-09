@@ -1,0 +1,11 @@
+h5_files: "/home/patelm/Downloads/dodo_uetliberg/uetliberg_h5" # The directory consisting of h5py files or the path to a single h5py file
+HW_ext: [512, 512] # Size of the all Gridmaps
+resolution: 0.04 # In meters
+length: 20.48 # In meters
+visualize: True
+write: True
+
+anchor_key: voxelmap_micro
+output_layer_keys: ["min_elevation", "max_elevation", "ceiling_elevation"] # Hardcoded and do not change order (Just if you want to rename)
+elevation_layers: ["min_elevation", "max_elevation", "ceiling_elevation"]
+output_ele_key: raw_elevation

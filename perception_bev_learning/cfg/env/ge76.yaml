@@ -1,0 +1,2 @@
+dataset_root_dir: /Data/bev_traversability/2022-06-07-jpl6_camp_roberts_d2/add_inpainted_current
+result_dir: /Data/Results/bev_learning

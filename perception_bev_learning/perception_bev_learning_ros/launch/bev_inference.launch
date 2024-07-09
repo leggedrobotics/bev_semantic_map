@@ -1,0 +1,41 @@
+<launch>
+    <arg name="robot_namespace" default="crl_rzr" />
+    <arg name="respawn" value="false" />
+    <arg name="output" value="screen" /> 
+    <param name="use_sim_time" value="true"/>
+    <group ns="$(arg robot_namespace)">    
+    <param name="rosout_filename" type="string" value="/home/jonfrey/trial.log" />
+    <!-- Inference Node -->
+    <node pkg="perception_bev_learning_ros" type="bev_inference_node" name="bev_inference_node" output="$(arg output)"> #launch-prefix="gdb -ex run --args"
+
+        <!-- <remap from="~left/camera_info" to="multisense_left/aux/semantic_image_rect_color/camera_info" />
+        <remap from="~right/camera_info" to="multisense_right/aux/semantic_image_rect_color/camera_info" />
+        <remap from="~front/camera_info" to="multisense_front/aux/semantic_image_rect_color/camera_info" />
+        <remap from="~back/camera_info" to="multisense_back/aux/semantic_image_rect_color/camera_info" />
+        <remap from="~front/rectified_image" to="multisense_front/aux/semantic_image_rect_color" />
+        <remap from="~back/rectified_image" to="multisense_back/aux/semantic_image_rect_color" />
+        <remap from="~left/rectified_image" to="multisense_left/aux/semantic_image_rect_color" />
+        <remap from="~right/rectified_image" to="multisense_right/aux/semantic_image_rect_color" /> -->
+        <remap from="~left/camera_info" to="multisense_left/aux/camera_info" />
+        <remap from="~right/camera_info" to="multisense_right/aux/camera_info" />
+        <remap from="~front/camera_info" to="multisense_front/aux/camera_info" />
+        <remap from="~back/camera_info" to="multisense_back/aux/camera_info" />
+        <remap from="~front/rectified_image" to="multisense_front/aux/image_rect_color" />
+        <remap from="~back/rectified_image" to="multisense_back/aux/image_rect_color" />
+        <remap from="~left/rectified_image" to="multisense_left/aux/image_rect_color" />
+        <remap from="~right/rectified_image" to="multisense_right/aux/image_rect_color" />
+
+        <remap from="~cloud" to="velodyne_merged_points" />
+        <remap from="~gvomcloud" to="pointcloud_map/points_short" />
+        <remap from="~raw_elevation_map" to="elevation_map/map_short_debug" />
+
+        <remap from="~bev_trav_map_micro" to="traversability_map/map_micro_bev" />
+        <remap from="~bev_trav_map_short" to="traversability_map/map_short" />
+        <remap from="~bev_trav_map_micro_vel" to="traversability_map/map_micro_instantaneous" />
+        <!-- <remap from="~raw_elevation_map" to="traversability_map_micro/debug_map" /> -->
+        <rosparam command="load" file="$(find perception_bev_learning_ros)/config/trav_map_filter.yaml" subst_value="true"/>
+    </node>
+
+    </group>
+
+</launch>

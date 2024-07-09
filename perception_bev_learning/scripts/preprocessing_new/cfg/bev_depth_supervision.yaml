@@ -1,0 +1,10 @@
+process_multiple: False # (TODO) For parallel processing 
+h5_files: "/data_large/manthan/cam_roberts_d3_short/trial_t10_no_gt" # The directory consisting of h5py files or the path to a single h5py file
+# config_file: "/data_ssd/manthan/bev_traversability/halter_ranch/h5_gt/dataset_config.pkl" # Path to .pkl config file (Should contain info for all H5py files if there are multiple)
+write: True
+anchor_key: multisense_front
+pointcloud_key: velodyne_merged_points
+image_keys: [multisense_front, multisense_left, multisense_right, multisense_back]
+depth_keys: [multisense_front_depth, multisense_left_depth, multisense_right_depth, multisense_back_depth]
+min_dist: 1
+mask_path: /home/jonfrey/workspaces/bev_new_ws/src/perception_bev_learning/scripts/preprocessing_new/image_mask # TODO Fix the abosulte path

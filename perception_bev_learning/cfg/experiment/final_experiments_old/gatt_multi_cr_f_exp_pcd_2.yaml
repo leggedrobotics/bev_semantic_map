@@ -1,0 +1,435 @@
+# @package _global_
+
+defaults:
+  - override /env: gattaca
+
+image_size: [396, 640]
+point_cloud_range: [-102.4, -102.4, -25, 102.4, 102.4, 25]
+upsample_interpolate_neck: 2
+
+voxel_size: [0.8, 0.8, 50]
+xbound: [-102.4, 102.4, 0.8]
+ybound: [-102.4, 102.4, 0.8]
+zbound: [-25.0, 25.0, 50.0]
+dbound: [1.0, 110, 1]
+pointpillar_output_shape: [256, 256] # (x_max-x_min / x_res, y_max-y_min / y_res)
+upsample_after_conv: 1
+downsample_raw_ele: 1
+name: cr_f_exp/256_multi_pcd_acc2
+
+return_n_pointclouds: 2
+pointcloud_merge_threshold: 2
+voxel_downsample: true
+voxel_downsample_size: 0.4
+
+batch_size: 6
+num_workers: 12
+training_steps: 16000
+lr: 5e-4
+
+persistent_workers: false
+prefetch_factor: 2
+pkl_cfg_file: dataset_config_clean_seperation_subsample_1.pkl
+use_images: true
+use_lidar: true
+use_raw_elevation: false
+use_minz_pcl: false
+use_gvom: false
+gvom_key: pointcloud_map-points_short
+
+target_shape_micro: [512, 512]
+target_shape_short: [256, 256]
+gmr_resolution: 0.2
+
+freeze_backbones: false
+sequence_length: 1
+bptt_sequence_length: 1
+use_temporal_fusion: false
+test_full_sequence: false
+
+logger:
+  wandb:
+    name: ${general.name}
+    project: "bev_multi"
+
+general:
+  name: ${name}
+  dataset_dir: /tmp/camp_roberts_f
+  result_dir: ${env.result_dir}
+  model_path: ${general.result_dir}/${general.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+  tags: ["multi", "cr_f_exp"]
+  train: true   # set false to skip model training
+  test: true
+  ckpt_path: null # simply provide checkpoint path to resume training
+  seed: 41 # seed for random number generators in pytorch, numpy and python.random
+
+trainer:
+  _target_: lightning.pytorch.trainer.Trainer
+  # precision: 16-mixed
+  accumulate_grad_batches: 1
+  fast_dev_run: false
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  limit_test_batches: 1.0
+  max_epochs: -1
+  max_steps: ${training_steps}
+  num_sanity_val_steps:  0
+  check_val_every_n_epoch: 1
+  accelerator: gpu
+  detect_anomaly: false
+  profiler: false  # 
+  devices: 1  # All
+  deterministic: false
+  # strategy: str = None  # ddp # TODO
+
+datamodule:
+  _target_: perception_bev_learning.dataset.BEVDataModuleMulti
+  dataloader:
+    train_dataloader:
+      batch_size: ${batch_size}
+      num_workers: ${num_workers}
+      persistent_workers: ${persistent_workers}
+      prefetch_factor: ${prefetch_factor}
+      shuffle: true
+      drop_last: true
+      pin_memory: true
+    val_dataloader:
+      batch_size: ${batch_size}
+      num_workers: ${num_workers}
+      persistent_workers: ${persistent_workers}
+      prefetch_factor: ${prefetch_factor}
+      shuffle: false
+      drop_last: false
+      pin_memory: true
+    test_dataloader:
+      batch_size: ${batch_size}
+      num_workers: ${num_workers}
+      persistent_workers: ${persistent_workers}
+      prefetch_factor: ${prefetch_factor}
+      shuffle: false
+      drop_last: false
+      pin_memory: true
+
+  dataset:
+    return_n_pointclouds: ${return_n_pointclouds}
+    pointcloud_merge_threshold: ${pointcloud_merge_threshold}
+    voxel_downsample: ${voxel_downsample}
+    voxel_downsample_size: ${voxel_downsample_size}
+    gvom_key: ${gvom_key}
+    return_test: true
+    target_layers:
+      micro:
+        shape: ${target_shape_micro}
+        layers:
+          wheel_risk:
+            name: wheel_risk
+            gridmap_topic: g_traversability_map_micro_gt
+            scale: 1.0
+            clip_min: 0
+            clip_max: 1
+          elevation:
+            name: elevation_dem
+            gridmap_topic: g_elevation_map_micro_dem
+            scale: 0.04
+            clip_min: -1
+            clip_max: 1
+      short:
+        shape: ${target_shape_short}
+        layers:
+          cost:
+            name: cost
+            gridmap_topic: g_traversability_map_short_gt
+            scale: 1.0
+            clip_min: 0
+            clip_max: 1
+          elevation:
+            name: elevation_dem
+            gridmap_topic: g_elevation_map_short_dem
+            scale: 0.04
+            clip_min: -1
+            clip_max: 1
+
+    aux_layers:
+      micro:
+        shape: ${target_shape_micro}
+        layers:
+          wheel_risk:
+            name: wheel_risk
+            gridmap_topic: g_traversability_map_micro
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+          elevation_raw:
+            name: elevation_raw
+            gridmap_topic: g_raw_ele_map_micro
+            scale: 0.04
+            clip_min: -1
+            clip_max: 1
+          elevation:
+            name: elevation
+            gridmap_topic: g_traversability_map_micro
+            scale: 0.04
+            clip_min: -1
+            clip_max: 1
+          reliable:
+            name: reliable
+            gridmap_topic: g_traversability_map_micro
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+          reliable_gt:
+            name: reliable
+            gridmap_topic: g_traversability_map_micro_gt
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+          confidence_gt:
+            name: confidence
+            gridmap_topic: g_traversability_map_micro_gt
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+      short:
+        shape: ${target_shape_short}
+        layers:
+          cost:
+            name: cost
+            gridmap_topic: g_traversability_map_short
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+          elevation_raw:
+            name: elevation_raw
+            gridmap_topic: g_raw_ele_map_short
+            scale: 0.04
+            clip_min: -1
+            clip_max: 1
+          elevation:
+            name: elevation
+            gridmap_topic: g_traversability_map_short
+            scale: 0.04
+            clip_min: -1
+            clip_max: 1
+          reliable: 
+            name: confidence # Hacky: Need to remove this dependence
+            gridmap_topic: g_traversability_map_short
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+          reliable_gt:
+            name: confidence # Hacky: Need to remove this dependence
+            gridmap_topic: g_traversability_map_short_gt
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+          confidence_gt:
+            name: confidence
+            gridmap_topic: g_traversability_map_short_gt
+            clip_min: 0
+            clip_max: 1
+            scale: 1.0
+
+model:
+  _target_: perception_bev_learning.lightning.LightningBEVMulti
+  path: ${general.model_path}
+  test_full_sequence: ${test_full_sequence} 
+  sequence_length: ${sequence_length}
+  batch_size: ${batch_size}
+
+  metrics:
+    hdd_statistic: true
+    fatal_risk: 0.35
+
+  target_layers:
+    micro:
+      wheel_risk: 
+        name: wheel_risk
+        loss_scale: 2.0
+        channels: 1
+        pre_loss_function:
+          _target_: torch.sigmoid
+          _partial_: true
+        loss_function:
+          _target_: perception_bev_learning.loss.wheel_risk_mse
+          _partial_: true
+        post_loss_function:
+          _target_: perception_bev_learning.loss.skip
+          _partial_: true
+      elevation: 
+        name: elevation
+        loss_scale: 2.0
+        channels: 1
+        pre_loss_function:
+          _target_: perception_bev_learning.loss.skip
+          _partial_: true
+        loss_function:
+          _target_: perception_bev_learning.loss.elevation_fused_l1
+          _partial_: true
+        post_loss_function:
+          _target_: perception_bev_learning.loss.skip
+          _partial_: true
+    short:
+      cost: 
+        name: cost
+        loss_scale: 2.0
+        channels: 1
+        pre_loss_function:
+          _target_: torch.sigmoid
+          _partial_: true
+        loss_function:
+          _target_: perception_bev_learning.loss.wheel_risk_mse
+          _partial_: true
+        post_loss_function:
+          _target_: perception_bev_learning.loss.skip
+          _partial_: true
+      elevation: 
+        name: elevation
+        loss_scale: 2.0
+        channels: 1
+        pre_loss_function:
+          _target_: perception_bev_learning.loss.skip
+          _partial_: true
+        loss_function:
+          _target_: perception_bev_learning.loss.elevation_fused_l1
+          _partial_: true
+        post_loss_function:
+          _target_: perception_bev_learning.loss.skip
+          _partial_: true
+
+  visualizer:
+    # Plotting Configuration
+    train: 0
+    val: 0
+    test: 0
+    plot_sequence: false
+    # Plotting BEV Maps
+    plot_all_risks: false
+    plot_all_elevations: false
+    plot_all_maps: true
+    # Plotting Images
+    plot_raw_images: true
+    # Plotting Project data onto images
+    project_gt_BEV_on_image: true
+    project_pred_BEV_on_image: true
+    # Generate Summary Dashboard
+    plot_dashboard: true
+
+  network:
+    # specify the main network module (BevTravNet in our case)
+    _target_: perception_bev_learning.models.fusion_models.BevTravNetMulti
+    cfg_model:
+      use_images: ${use_images}
+      use_lidar: ${use_lidar}
+      use_raw_elevation: ${use_raw_elevation}
+      use_minz_pcl: ${use_minz_pcl}
+      use_gvom: ${use_gvom}
+      gmr_resolution: ${gmr_resolution}
+      sequence_length: ${sequence_length}
+      use_temporal_fusion: ${use_temporal_fusion}
+      freeze_backbones: ${freeze_backbones}
+      downsample_raw_ele: ${downsample_raw_ele}
+      encoders:
+        camera:
+          backbone:
+            type: EfficientNetB
+            model_name: efficientnet-b0 # b0-b7
+            drop_rate: 0.2
+            out_indices: [2, 3, 4] # Use 2,3,4 for all efficientNetb0 - b7
+            
+          neck:
+            type: GeneralizedLSSFPN
+            in_channels: [40, 112, 320] 
+            #b0[40, 112, 320] #b1[40, 112, 320] #b2[48, 120, 352] #b3[48,136,384]
+            #b4[56, 160, 448] #b5[64, 176, 512] #b6[72, 200, 576] #b7[80, 224, 640]
+            out_channels: 256
+            start_level: 0
+            num_outs: 3
+            norm_cfg:
+              type: BN2d
+              requires_grad: true
+            act_cfg:
+              type: ReLU
+              inplace: true
+            upsample_cfg:
+              mode: bilinear
+              align_corners: false
+          vtransform:
+            type: LSSTransform
+            in_channels: 256
+            out_channels: 80
+            image_size: ${image_size}
+            # feature_size: ${image_size}//8 #TODO
+            feature_downsample: 8
+            xbound: ${xbound}
+            ybound: ${ybound}
+            zbound: ${zbound}
+            dbound: ${dbound}
+            downsample: 1
+        lidar:
+          voxelize:
+            max_num_points: 16
+            point_cloud_range: ${point_cloud_range}
+            voxel_size: ${voxel_size}
+            max_voxels: [32000, 64000]
+          voxelize_reduce: false # Keep this false -> Useful only for 3D Sparse Convs
+          backbone:
+            type: PointPillarsNet
+            voxel_encoder:
+              type: PillarFeatureNet
+              in_channels: 3 # (x, y, z)
+              feat_channels: [64]
+              with_distance: False
+              voxel_size: ${voxel_size}
+              point_cloud_range: ${point_cloud_range}
+            middle_encoder:
+              type: PointPillarsScatter
+              in_channels: 64
+              output_shape: ${pointpillar_output_shape} # (x_max-x_min / x_res, y_max-y_min / y_res)
+            backbone:
+              type: SECOND
+              in_channels: 64
+              out_channels: [64, 128, 256]
+              layer_nums: [3, 5, 5]
+              layer_strides: [2, 2, 2]
+            neck:
+              type: SECONDFPN
+              in_channels: [64, 128, 256]
+              out_channels: [32, 32, 32]
+              upsample_strides: [1, 2, 4]
+              use_conv_for_no_stride: true
+              upsample_interpolate: ${upsample_interpolate_neck}
+      fuser:
+        type: ConvFuserUpsample
+        in_channels: [80, 96] # This value will get overwritten from the fusion model init
+        out_channels: 256
+        upsample: ${upsample_after_conv}
+      decoder:
+        backbone:
+          type: BEVDecoderMulti
+          in_channels: 256
+          mid_channels: 128
+          out_channels: 64
+          p_dropout: 0.2
+        neck:
+          type: EmptyNeck
+      head:
+        type: BEVMultiHead
+        in_channels:
+          micro: ${model.network.cfg_model.decoder.backbone.out_channels}
+          short: ${model.network.cfg_model.decoder.backbone.mid_channels}
+        target_layers: ${model.target_layers}
+
+  optimizer:
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: ${lr}
+    weight_decay: 1.0e-7
+
+  scheduler:
+    _target_: torch.optim.lr_scheduler.OneCycleLR
+    _partial_: true
+    max_lr: ${model.optimizer.lr}
+    total_steps: ${trainer.max_steps}
+    pct_start: 0.1
+    div_factor: 25.0
+    final_div_factor: 10000.0

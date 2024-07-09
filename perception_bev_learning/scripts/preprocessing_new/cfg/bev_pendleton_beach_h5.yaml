@@ -1,0 +1,244 @@
+general:
+  process_multiple: False # Process multiple bag files 
+  max_threads: 1 # Set to 1 or less if you do not want to do multi-threading
+  rosbags: "/data_large/manthan/helendale_f/bags/crl_rzr_hw_2023-03-12-23-30-18-UTC+0000_helendale-open-bushes-1_racer-jpl9_racer-base2_ROBOT_open_bushes_t2"
+  dest: "/data_large/manthan/helendale_f/h5_no_gt" # Directory where the output will be stored, shouldn't end with /
+  chunk_len: None
+  compression: None
+  bag_keywords: ["bev_color", "bev_trav", "bev_velodyne", "bev_gvom", "gps"]
+  tf_keyword: "_bev_tf_"
+  max_samples: 1000 # Set to None to process all samples
+
+dataset:
+  anchor_obs_name: multisense_front
+  anchor_dist_threshold: 1.5
+  reference_frame: crl_rzr/map
+  resize: [640, 396]
+
+  default_converter:
+    max_ts: 0.1 # maximum timestamp threshold (in s)
+    buffer_size: 5 # Explained below
+    store_once: False 
+    store_always: False # Setting this to True will store all messages in the H5py
+    merge_N_temporal: 0 # Setting this to +ve value will aggregate that many observations from future; 
+                        # -ve value from the past; A list of 2 value will take from both past and future[-50,50]
+  
+  # CAMP Roberts Information
+  # Velodyne Hz: 10 Hz
+  # Front Cam: 14 Hz
+  # Left, Right Cam: 13 Hz
+  # Back Cam: 3 Hz
+  # GVOM Micro: 5 Hz
+  # GVOM Short: 5 Hz
+  # elevation_micro: 5 Hz
+  # elevation_short: 5 Hz
+  # traversability_micro: 5 Hz
+  # traversability_short: 10 Hz
+  # GPS: 20 Hz
+  
+  # Strategy for calculating the Buffer Size:
+  # First set the buffer size of the observation with maximum aggregation:
+  # For example in you want to aggregate lidar clouds [-50, 50], set the buffer size to something greater 
+  # than atleast 100. For e.g. 150
+  # Now calculate the how much of the artifical delay you need to create
+  # For example in this case, you want atleast 50 pointcloud from the future -> 50 / 10 Hz (velodyne Hz) ~ 5 seconds
+  # So need to now decide the anchor buffer size according to this artificial delay (lets create a 6 seconds delay)
+  # 6 seconds * 12 Hz (Front Cam is anchor) ~ 75 
+  # So now we decide the buffers of the other observations which should be roughly atleast Artificial delay * Frequency
+  # E.g. for Left, Right Back cameras: 15Hz * 7 ~ 105 -> Lets make it 110 (Here we assume artificial delay slightly larger == 7 seconds)
+  # E.g. for GPS: 20 Hz * 7 ~ 140 -> 160 for safety
+  # E.g. for Traversability Map Micro: 5 Hz * 7 ~ 35 -> 40 
+  # E.g. for Traversability Map Short: 10 Hz * 7 ~ 70 -> 80 
+
+  converters:
+    front_rgb:
+      obs_name: multisense_front
+      topic: /crl_rzr/multisense_front/aux/semantic_image_rect_color/compressed
+      buffer_size: 75
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        aux_tfs:
+          - ["utm", "crl_rzr/sensor_origin_link"] # [Reference , Target]
+          - ["utm", "crl_rzr/map"] # [Reference , Target]
+        resize: ${dataset.resize}
+        
+    front_camera_info:
+      obs_name: multisense_front-camera_info
+      topic: /crl_rzr/multisense_front/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+
+    gps_orientation:
+      obs_name: gps_orientation
+      topic: /crl_rzr/duro/piksi/imu/data
+      max_ts: 0.1
+      buffer_size: 160
+      converter:
+        _target_: converters.gps.GPSOrientationConverter
+    
+    gps_pose:
+      obs_name: gps_pose
+      topic: /crl_rzr/duro/piksi/pos_llh_cov
+      max_ts: 0.1
+      buffer_size: 160
+      converter:
+        _target_: converters.gps.GPSPosConverter
+
+    left_rgb:
+      obs_name: multisense_left
+      topic: /crl_rzr/multisense_left/aux/semantic_image_rect_color/compressed
+      max_ts: 0.05
+      buffer_size: 110
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        resize: ${dataset.resize}
+
+    left_camera_info:
+      obs_name: multisense_left-camera_info
+      topic: /crl_rzr/multisense_left/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+
+    right_rgb:
+      obs_name: multisense_right
+      topic: /crl_rzr/multisense_right/aux/semantic_image_rect_color/compressed
+      max_ts: 0.05
+      buffer_size: 110
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        resize: ${dataset.resize}
+
+    right_camera_info:
+      obs_name: multisense_right-camera_info
+      topic: /crl_rzr/multisense_right/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+    
+    back_rgb:
+      obs_name: multisense_back
+      topic: /crl_rzr/multisense_back/aux/semantic_image_rect_color/compressed
+      max_ts: 0.05
+      buffer_size: 25
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "crl_rzr/sensor_origin_link"
+          - "crl_rzr/base_link"
+        resize: ${dataset.resize}
+
+    back_camera_info:
+      obs_name: multisense_back-camera_info
+      topic: /crl_rzr/multisense_back/aux/semantic_image_rect_color/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        resize: ${dataset.resize}
+
+    traversability_map_micro:
+      obs_name: traversability_map_micro
+      topic: /crl_rzr/traversability_map/map_micro
+      max_ts: 0.5
+      buffer_size: 40
+      store_always: True
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation"
+          - "unknown"
+          - "reliable_filled"
+          - "reliable"
+          - "wheel_risk"
+          - "confidence"
+          - "prob_trail"
+          - "prob_trail_filled"
+          - "wheel_lethal"
+          - "prob_obstacle_risk"
+    
+    traversability_map_short:
+      obs_name: traversability_map_short
+      topic: /crl_rzr/traversability_map/map_short
+      max_ts: 0.5
+      buffer_size: 80
+      store_always: True
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation"
+          - "confidence"
+          - "cost"
+          - "prob_obstacle_risk"
+    
+    raw_ele_map_micro:
+      obs_name: raw_ele_map_micro
+      topic: /crl_rzr/elevation_map/map_micro_debug
+      max_ts: 0.5
+      buffer_size: 40
+      store_always: False
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation_raw"
+          - "num_points"
+    
+    raw_ele_map_short:
+      obs_name: raw_ele_map_short
+      topic: /crl_rzr/elevation_map/map_short_debug
+      max_ts: 0.5
+      buffer_size: 40
+      store_always: False
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation_raw"
+          - "num_points"
+    
+    velodyne_merged:
+      obs_name: velodyne_merged_points
+      topic: /crl_rzr/velodyne_merged_points_unfiltered
+      max_ts: 0.05
+      buffer_size: 150
+      merge_N_temporal: [-50, 50]
+      converter:
+        _target_: converters.pointcloud.PointCloudConverter
+        reference_frame: ${dataset.reference_frame}
+
+    gvom_micro:
+      obs_name: pointcloud_map-points_micro
+      topic: /crl_rzr/pointcloud_map/points_micro
+      max_ts: 0.5
+      buffer_size: 40
+      converter:
+        _target_: converters.pointcloud.PointCloudConverter
+        reference_frame: ${dataset.reference_frame}
+    
+    gvom_short:
+      obs_name: pointcloud_map-points_short
+      topic: /crl_rzr/pointcloud_map/points_short
+      max_ts: 0.5
+      buffer_size: 40
+      converter:
+        _target_: converters.pointcloud.PointCloudConverter
+        reference_frame: ${dataset.reference_frame}

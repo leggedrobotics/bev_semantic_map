@@ -1,0 +1,27 @@
+h5_files: "/data_large/manthan/pendleton_new/h5_rot" # The directory consisting of h5py files or the path to a single h5py file
+# config_file: "/data_ssd/manthan/bev_traversability/halter_ranch/h5_gt/dataset_config.pkl" # Path to .pkl config file (Should contain info for all H5py files if there are multiple)
+HW_ext: [512, 512] # Size of the all Gridmaps
+visualize: False
+write: True
+
+anchor_key: multisense_front
+input_layer_keys: ["traversability_map_micro_gt", "traversability_map_micro", "raw_ele_map_micro"]
+output_layer_keys: ["g_traversability_map_micro_gt", "g_traversability_map_micro", "g_raw_ele_map_micro"] # Cannot be same as input
+gps_o_key: gps_orientation
+gps_p_key: gps_pose
+dem_layer_key: traversability_map_micro_gt
+dem_layer_name: elevation_fused
+elevation_layers: ["elevation", "elevation_raw"]
+
+dem_config:
+  input_dem: "/home/jonfrey/Downloads/pendleton_alpha_beach.tif" # "/home/jonfrey/Downloads/camp_roberts.tif"
+  width_gridmap: 200 # In metres
+  crop_gridmap: [110, 110]
+  crop_gridmap_tolerance: [120, 120]
+  elevation_layer: "elevation"
+  elevation_layer_est: "elevation_est"
+  confidence_layer: "confidence"
+  # ICP params #TODO
+  voxel_size: 1
+  scale: 5 # Scale multiplier for resolution diff in GT and DEM
+

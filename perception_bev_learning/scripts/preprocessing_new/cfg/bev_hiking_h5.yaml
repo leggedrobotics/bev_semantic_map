@@ -1,0 +1,146 @@
+general:
+  process_multiple: False # Process multiple bag files 
+  max_threads: 1 # Set to 1 or less if you do not want to do multi-threading
+  rosbags: "/home/patelm/Data/nature_hiking/20240620-hoengg-shakeout/dodo_mission_2024_06_20/12-10-41"
+  dest: "/home/patelm/Data/nature_hiking/20240620-hoengg-shakeout/dodo_2024_06_20_h5" # Directory where the output will be stored, shouldn't end with /
+  chunk_len: None
+  compression: None
+  bag_keywords: ["jetson", "lpc", "npc"]
+  tf_keyword: "bev_tf"
+  max_samples: 50 # Set to None to process all samples
+
+dataset:
+  anchor_obs_name: hdr_front
+  anchor_dist_threshold: 1.5
+  reference_frame: map_o3d_localization_manager
+  resize: [640, 396]
+
+  default_converter:
+    max_ts: 0.1 # maximum timestamp threshold (in s)
+    buffer_size: 5 # Explained below
+    store_once: False 
+    store_always: False # Setting this to True will store all messages in the H5py
+    merge_N_temporal: 0 # Setting this to +ve value will aggregate that many observations from future; 
+                        # -ve value from the past; A list of 2 value will take from both past and future[-50,50]
+  
+  # CAMP Roberts Information
+  # Velodyne Hz: 10 Hz
+  # Front Cam: 12 Hz
+  # Left, Right, Back Cam: 15 Hz
+  # GVOM Micro: 5 Hz
+  # GVOM Short: 5 Hz
+  # elevation_micro: 5 Hz
+  # elevation_short: 5 Hz
+  # traversability_micro: 5 Hz
+  # traversability_short: 10 Hz
+  # GPS: 20 Hz
+  
+  # Strategy for calculating the Buffer Size:
+  # First set the buffer size of the observation with maximum aggregation:
+  # For example in you want to aggregate lidar clouds [-50, 50], set the buffer size to something greater 
+  # than atleast 100. For e.g. 150
+  # Now calculate the how much of the artifical delay you need to create
+  # For example in this case, you want atleast 50 pointcloud from the future -> 50 / 10 Hz (velodyne Hz) ~ 5 seconds
+  # So need to now decide the anchor buffer size according to this artificial delay (lets create a 6 seconds delay)
+  # 6 seconds * 12 Hz (Front Cam is anchor) ~ 75 
+  # So now we decide the buffers of the other observations which should be roughly atleast Artificial delay * Frequency
+  # E.g. for Left, Right Back cameras: 15Hz * 7 ~ 105 -> Lets make it 110 (Here we assume artificial delay slightly larger == 7 seconds)
+  # E.g. for GPS: 20 Hz * 7 ~ 140 -> 160 for safety
+  # E.g. for Traversability Map Micro: 5 Hz * 7 ~ 35 -> 40 
+  # E.g. for Traversability Map Short: 10 Hz * 7 ~ 70 -> 80 
+
+  converters:
+    front_rgb:
+      obs_name: hdr_front
+      topic: /hdr_camera_front/image_raw/compressed
+      buffer_size: 10
+      converter:
+        _target_: converters.img.CompressedImgConverter
+        reference_frame: ${dataset.reference_frame}
+        aux_target_frame: 
+          - "base_inverted"
+          - "base"
+        aux_tfs:
+          - ["odom", "base_inverted"] # [Reference , Target]
+        # resize: ${dataset.resize}
+        
+    front_camera_info:
+      obs_name: hdr_front-camera_info
+      topic: /hdr_camera_front/camera_info
+      store_once: True
+      converter:
+        _target_: converters.caminfo.CameraInfoConverter
+        # resize: ${dataset.resize}
+
+    # back_rgb:
+    #   obs_name: multisense_back
+    #   topic: /crl_rzr/multisense_back/aux/semantic_image_rect_color/compressed
+    #   max_ts: 0.05
+    #   buffer_size: 110
+    #   converter:
+    #     _target_: converters.img.CompressedImgConverter
+    #     reference_frame: ${dataset.reference_frame}
+    #     aux_target_frame: 
+    #       - "crl_rzr/sensor_origin_link"
+    #       - "crl_rzr/base_link"
+    #     resize: ${dataset.resize}
+
+    # back_camera_info:
+    #   obs_name: multisense_back-camera_info
+    #   topic: /crl_rzr/multisense_back/aux/semantic_image_rect_color/camera_info
+    #   store_once: True
+    #   converter:
+    #     _target_: converters.caminfo.CameraInfoConverter
+    #     resize: ${dataset.resize}
+
+    traversability_map_micro:
+      obs_name: traversability_map_micro
+      topic: /elevation_mapping/elevation_map_raw
+      max_ts: 0.5
+      buffer_size: 10
+      store_always: True
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation"
+          - "preferred_area"
+    
+    traversability_map_short:
+      obs_name: traversability_map_short
+      topic: /elevation_mapping_large/elevation_map_raw
+      max_ts: 0.5
+      buffer_size: 10
+      store_always: True
+      converter:
+        _target_: converters.gridmap.GridMapConverter
+        reference_frame: ${dataset.reference_frame}
+        layers:
+          - "elevation"
+          - "preferred_area"
+    
+    velodyne_merged:
+      obs_name: velodyne_merged_points
+      topic: /point_cloud_filter/lidar/point_cloud_filtered
+      max_ts: 0.05
+      buffer_size: 10
+      converter:
+        _target_: converters.pointcloud.PointCloudConverter
+        reference_frame: ${dataset.reference_frame}
+
+    lodia_path:
+      obs_name: lodia_path
+      topic: /lodia/path
+      max_ts: 10
+      buffer_size: 3
+      converter:
+        _target_: converters.path.NavPathConverter
+        reference_frame: ${dataset.reference_frame}
+    # gvom_micro:
+    #   obs_name: pointcloud_map-points_micro
+    #   topic: /crl_rzr/pointcloud_map/points_micro
+    #   max_ts: 0.5
+    #   buffer_size: 40
+    #   converter:
+    #     _target_: converters.pointcloud.PointCloudConverter
+    #     reference_frame: ${dataset.reference_frame}

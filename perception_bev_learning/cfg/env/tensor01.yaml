@@ -1,0 +1,3 @@
+# dataset_root_dir: /data/bev_traversability/2022-06-07-jpl6_camp_roberts_d2
+dataset_root_dir: /data_bev/training_data/halter_ranch_manual
+result_dir: /data_bev/results

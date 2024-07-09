@@ -1,0 +1,141 @@
+# @package _global_
+
+defaults:
+  - override /env: gattaca
+
+image_size: [396, 640]
+point_cloud_range: [-51.2, -51.2, -25, 51.2, 51.2, 25]
+upsample_interpolate_neck: 2
+
+voxel_size: [0.8, 0.8, 50]
+xbound: [-51.2, 51.2, 0.8]
+ybound: [-51.2, 51.2, 0.8]
+dbound: [1.0, 60, 0.5]
+pointpillar_output_shape: [128, 128] # (x_max-x_min / x_res, y_max-y_min / y_res)
+upsample_after_conv: 1
+downsample_raw_ele: 4
+name: cr_f_paperv2/128_micro_lss
+
+return_n_pointclouds: 1
+pointcloud_merge_threshold: 2
+voxel_downsample: false
+voxel_downsample_size: 0.4
+
+batch_size: 6
+num_workers: 12
+training_steps: 16000
+lr: 5e-4
+
+persistent_workers: false
+prefetch_factor: 2
+pkl_cfg_file: dataset_config_clean_seperation_subsample_1.pkl
+use_images: true
+use_lidar: false
+use_raw_elevation: false
+use_minz_pcl: false
+use_gvom: false
+use_minz_gvom: false
+use_gvom_semantics: false
+
+gvom_key: pointcloud_map-points_micro
+
+target_shape_micro: [512, 512]
+gmr_resolution: 0.8
+elevation_rescale: 0.04
+
+freeze_backbones: false
+sequence_length: 1
+bptt_sequence_length: 1
+use_temporal_fusion: false
+test_full_sequence: false
+
+logger:
+  wandb:
+    name: ${general.name}
+    project: "bev_multi"
+
+general:
+  name: ${name}
+  dataset_dir: ${env.dataset_root_dir}
+  result_dir: ${env.result_dir}
+  model_path: ${general.result_dir}/${general.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+  tags: ["micro", "cr_f_exp"]
+  train: true   # set false to skip model training
+  test: true
+  ckpt_path: null # simply provide checkpoint path to resume training
+  seed: 41 # seed for random number generators in pytorch, numpy and python.random
+
+trainer:
+  _target_: lightning.pytorch.trainer.Trainer
+  fast_dev_run: false
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  limit_test_batches: 1.0
+  max_epochs: -1
+  max_steps: ${training_steps}
+  accelerator: gpu
+  profiler: false  # 
+  devices: 1  # All
+  deterministic: warn
+  # strategy: str = None  # ddp # TODO
+
+datamodule:
+  _target_: perception_bev_learning.dataset.BEVDataModuleMulti
+  dataloader:
+    train_dataloader:
+      batch_size: ${batch_size}
+      num_workers: ${num_workers}
+      persistent_workers: ${persistent_workers}
+      prefetch_factor: ${prefetch_factor}
+      shuffle: true
+      drop_last: true
+      pin_memory: true
+    val_dataloader:
+      batch_size: ${batch_size}
+      num_workers: ${num_workers}
+      persistent_workers: ${persistent_workers}
+      prefetch_factor: ${prefetch_factor}
+      shuffle: false
+      drop_last: false
+      pin_memory: true
+    test_dataloader:
+      batch_size: ${batch_size}
+      num_workers: ${num_workers}
+      persistent_workers: ${persistent_workers}
+      prefetch_factor: ${prefetch_factor}
+      shuffle: false
+      drop_last: false
+      pin_memory: true
+
+  dataset:
+    gvom_key: ${gvom_key}
+    return_test: true
+
+model:
+  _target_: perception_bev_learning.lightning.LightningBEVMulti
+  path: ${general.model_path}
+  test_full_sequence: ${test_full_sequence} 
+  sequence_length: ${sequence_length}
+  batch_size: ${batch_size}
+
+  visualizer:
+    # Plotting Configuration
+    train: 0
+    val: 0
+    test: 0
+    plot_sequence: false
+    # Plotting BEV Maps
+    plot_all_risks: false
+    plot_all_elevations: false
+    plot_all_maps: true
+    # Plotting Images
+    plot_raw_images: true
+    # Plotting Project data onto images
+    project_gt_BEV_on_image: true
+    project_pred_BEV_on_image: true
+    # Generate Summary Dashboard
+    plot_dashboard: true
+
+  network:
+    # specify the main network module (BevTravNet in our case)
+    _target_: perception_bev_learning.models.fusion_models.BevTravNetMulti

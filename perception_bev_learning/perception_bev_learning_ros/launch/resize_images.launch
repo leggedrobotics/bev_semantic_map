@@ -1,0 +1,48 @@
+
+<launch>
+  <!-- Launch the image_proc nodelet -->
+  <node pkg="nodelet" type="nodelet" name="standalone_nodelet"  args="manager"/>
+  
+  <!-- <node name="uncompress_front" pkg="image_transport" type="republish" args="compressed in:=/crl_rzr/multisense_front/aux/image_rect_color/compressed raw out:=/crl_rzr/multisense_front/aux/image_rect_color" /> -->
+
+  <node pkg="nodelet" type="nodelet" name="image_proc_nodelet_front" args="load image_proc/resize standalone_nodelet">
+    <remap from="camera_info" to="/crl_rzr/multisense_front/aux/semantic_image_rect_color/camera_info" />
+    <remap from="~camera_info" to="/crl_rzr/multisense_front/aux/image_rect_color_resized/camera_info" />
+    <remap from="image" to="/crl_rzr/multisense_front/aux/image_rect_color" />
+    <remap from="~image" to="/crl_rzr/multisense_front/aux/image_rect_color_resized" />
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="image_proc_nodelet_left" args="load image_proc/resize standalone_nodelet">
+    <remap from="camera_info" to="/crl_rzr/multisense_left/aux/semantic_image_rect_color/camera_info" />
+    <remap from="~camera_info" to="/crl_rzr/multisense_left/aux/image_rect_color_resized/camera_info" />
+    <remap from="image" to="/crl_rzr/multisense_left/aux/image_rect_color" />
+    <remap from="~image" to="/crl_rzr/multisense_left/aux/image_rect_color_resized" />
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="image_proc_nodelet_right" args="load image_proc/resize standalone_nodelet">
+    <remap from="camera_info" to="/crl_rzr/multisense_right/aux/semantic_image_rect_color/camera_info" />
+    <remap from="~camera_info" to="/crl_rzr/multisense_right/aux/image_rect_color_resized/camera_info" />
+    <remap from="image" to="/crl_rzr/multisense_right/aux/image_rect_color" />
+    <remap from="~image" to="/crl_rzr/multisense_right/aux/image_rect_color_resized" />
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="image_proc_nodelet_back" args="load image_proc/resize standalone_nodelet">
+    <remap from="camera_info" to="/crl_rzr/multisense_back/aux/semantic_image_rect_color/camera_info" />
+    <remap from="~camera_info" to="/crl_rzr/multisense_back/aux/image_rect_color_resized/camera_info" />
+    <remap from="image" to="/crl_rzr/multisense_back/aux/image_rect_color" />
+    <remap from="~image" to="/crl_rzr/multisense_back/aux/image_rect_color_resized" />
+  </node>
+
+<node name="dynparam_width_front" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_front scale_width 0.2074077" />
+<node name="dynparam_height_front" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_front scale_height 0.2074077" />
+
+<node name="dynparam_width_left" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_left scale_width 0.2074077" />
+<node name="dynparam_height_left" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_left scale_height 0.2074077" />
+
+<node name="dynparam_width_right" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_right scale_width 0.2074077" />
+<node name="dynparam_height_right" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_right scale_height 0.2074077" />
+
+<node name="dynparam_width_back" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_back scale_width 0.2074077" />
+<node name="dynparam_height_back" pkg="dynamic_reconfigure" type="dynparam" args="set /image_proc_nodelet_back scale_height 0.2074077" />
+
+</launch>

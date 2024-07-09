@@ -1,0 +1,3 @@
+# dataset_root_dir: /data_ssd/manthan/bev_traversability/halter_ranch/h5_gt
+dataset_root_dir: /data_large/manthan/camp_roberts_f
+result_dir: /data_ssd/manthan/results
