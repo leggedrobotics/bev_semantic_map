@@ -24,7 +24,7 @@
         <remap from="~left/rectified_image" to="multisense_left/aux/image_rect_color" />
         <remap from="~right/rectified_image" to="multisense_right/aux/image_rect_color" /> -->
 
-        <remap from="~cloud" to="merged_points" />
+        <remap from="~merged_cloud" to="merged_cloud" />
         <!-- <remap from="~gvomcloud" to="pointcloud_map/points_short" /> -->
         <remap from="~raw_elevation_map" to="elevation_mapping/elevation_map_raw" />
 

@@ -8,38 +8,38 @@ bool BevInferenceROS::init()
   tfBufferFC_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
   tfListenerFC_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferFC_);
 
-  tfBufferLC_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
-  tfListenerLC_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferLC_);
+  // tfBufferLC_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
+  // tfListenerLC_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferLC_);
 
-  tfBufferRC_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
-  tfListenerRC_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferRC_);
+  // tfBufferRC_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
+  // tfListenerRC_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferRC_);
 
   tfBufferBC_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
   tfListenerBC_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferBC_);
 
-  tfBufferV_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
-  tfListenerV_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferV_);
+  // tfBufferG_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
+  // tfListenerG_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferG_);
 
-  tfBufferG_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
-  tfListenerG_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferG_);
+  tfBufferC_ = std::make_unique<tf2_ros::Buffer>(ros::Duration(10.0));
+  tfListenerC_ = std::make_unique<tf2_ros::TransformListener>(*tfBufferC_);
 
-  if (readParameters() == false)
-  {
-    ROS_ERROR("Failed to read parameters");
-    return false;
-  }
+  // if (readParameters() == false)
+  // {
+  //   ROS_ERROR("Failed to read parameters");
+  //   return false;
+  // }
 
   // Setup filter chain.
-  if (!filterChainShort_.configure(filterChainParametersNameShort_, pnh_))
-  {
-    ROS_ERROR("Could not configure the filter chain!");
-    return false;
-  }
-  if (!filterChainMicro_.configure(filterChainParametersNameMicro_, pnh_))
-  {
-    ROS_ERROR("Could not configure the filter chain!");
-    return false;
-  }
+  // if (!filterChainShort_.configure(filterChainParametersNameShort_, pnh_))
+  // {
+  //   ROS_ERROR("Could not configure the filter chain!");
+  //   return false;
+  // }
+  // if (!filterChainMicro_.configure(filterChainParametersNameMicro_, pnh_))
+  // {
+  //   ROS_ERROR("Could not configure the filter chain!");
+  //   return false;
+  // }
 
   {
     py::gil_scoped_acquire acquire;
@@ -66,38 +66,43 @@ bool BevInferenceROS::init()
   }
 
   // Publishers
-  pubGridMapMicro_ = pnh_.advertise<GridMapMsg>("bev_trav_map_micro", 1);
-  pubGridMapMicroInfo_ = pnh_.advertise<grid_map_msgs::GridMapInfo>("bev_map_micro_info", 1);
+  // pubGridMapMicro_ = pnh_.advertise<GridMapMsg>("bev_trav_map_micro", 1);
+  // pubGridMapMicroInfo_ = pnh_.advertise<grid_map_msgs::GridMapInfo>("bev_map_micro_info", 1);
 
-  pubGridMapShort_ = pnh_.advertise<GridMapMsg>("bev_trav_map_short", 1);
-  pubGridMapShortInfo_ = pnh_.advertise<grid_map_msgs::GridMapInfo>("bev_map_short_info", 1);
+  pubGridMap_ = pnh_.advertise<GridMapMsg>("bev_trav_map", 1);
+  pubGridMapInfo_ = pnh_.advertise<grid_map_msgs::GridMapInfo>("bev_map_info", 1);
 
-  pubGridMapMicroVel_ = pnh_.advertise<GridMapMsg>("bev_trav_map_micro_vel", 1);
-  pubGridMapMicroVelInfo_ = pnh_.advertise<grid_map_msgs::GridMapInfo>("bev_map_micro_vel_info", 1);
+  // pubGridMapMicroVel_ = pnh_.advertise<GridMapMsg>("bev_trav_map_micro_vel", 1);
+  // pubGridMapMicroVelInfo_ = pnh_.advertise<grid_map_msgs::GridMapInfo>("bev_map_micro_vel_info", 1);
 
   // Camera Info Subscribers
-  subCamInfoLeft_ = pnh_.subscribe<sensor_msgs::CameraInfo>("left/camera_info", 2, &BevInferenceROS::infoLeftCb, this,
-                                                            ros::TransportHints().tcpNoDelay());
-  subCamInfoRight_ = pnh_.subscribe<sensor_msgs::CameraInfo>("right/camera_info", 2, &BevInferenceROS::infoRightCb,
+  // subCamInfoLeft_ = pnh_.subscribe<sensor_msgs::CameraInfo>("left/camera_info", 2, &BevInferenceROS::infoLeftCb, this,
+  //                                                           ros::TransportHints().tcpNoDelay());
+  // subCamInfoRight_ = pnh_.subscribe<sensor_msgs::CameraInfo>("right/camera_info", 2, &BevInferenceROS::infoRightCb,
+  //                                                            this, ros::TransportHints().tcpNoDelay());
+  subCamInfoFront_ = pnh_.subscribe<sensor_msgs::CameraInfo>("/hdr_camera_front/camera_info", 2, &BevInferenceROS::infoFrontCb,
                                                              this, ros::TransportHints().tcpNoDelay());
-  subCamInfoFront_ = pnh_.subscribe<sensor_msgs::CameraInfo>("front/camera_info", 2, &BevInferenceROS::infoFrontCb,
-                                                             this, ros::TransportHints().tcpNoDelay());
-  subCamInfoBack_ = pnh_.subscribe<sensor_msgs::CameraInfo>("back/camera_info", 2, &BevInferenceROS::infoBackCb, this,
+  subCamInfoBack_ = pnh_.subscribe<sensor_msgs::CameraInfo>("/hdr_camera_rear/camera_info", 2, &BevInferenceROS::infoBackCb, this,
                                                             ros::TransportHints().tcpNoDelay());
 
   // Camera Image Subscribers (Rectified Images)
-  subCamFront_ = it_.subscribe("front/rectified_image", 2, &BevInferenceROS::camFrontCb, this);
-  subCamBack_ = it_.subscribe("back/rectified_image", 2, &BevInferenceROS::camBackCb, this);
-  subCamLeft_ = it_.subscribe("left/rectified_image", 2, &BevInferenceROS::camLeftCb, this);
-  subCamRight_ = it_.subscribe("right/rectified_image", 2, &BevInferenceROS::camRightCb, this);
+  subCamFront_ = it_.subscribe("/hdr_camera_front/image_raw", 2, &BevInferenceROS::camFrontCb, this);
+  subCamBack_ = it_.subscribe("/hdr_camera_rear/image_raw", 2, &BevInferenceROS::camBackCb, this);
+  // TODO: rectify the images
+  // subCamLeft_ = it_.subscribe("left/rectified_image", 2, &BevInferenceROS::camLeftCb, this);
+  // subCamRight_ = it_.subscribe("right/rectified_image", 2, &BevInferenceROS::camRightCb, this);
 
   // Velodyne Cloud Subscriber
-  subVelodyneMerged_ = pnh_.subscribe<sensor_msgs::PointCloud2>("cloud", 2, &BevInferenceROS::velodyneCb, this,
-                                                                ros::TransportHints().tcpNoDelay());
+  // subVelodyneMerged_ = pnh_.subscribe<sensor_msgs::PointCloud2>("cloud", 2, &BevInferenceROS::velodyneCb, this,
+  //                                                               ros::TransportHints().tcpNoDelay());
 
   // VoxelMap Subscriber
-  subGvom_ = pnh_.subscribe<sensor_msgs::PointCloud2>("gvomcloud", 2, &BevInferenceROS::gvomCb, this,
-                                                      ros::TransportHints().tcpNoDelay());
+  // subGvom_ = pnh_.subscribe<sensor_msgs::PointCloud2>("gvomcloud", 2, &BevInferenceROS::gvomCb, this,
+  //                                                     ros::TransportHints().tcpNoDelay());
+
+  // Merged pointcloud subscriber
+  subCloud_ = pnh_.subscribe<sensor_msgs::PointCloud2>("cloud", 2, &BevInferenceROS::cloudCb, this,
+                                                                ros::TransportHints().tcpNoDelay());
 
   // Raw ElevationMap Subscriber (Gridmap)
   subElevationMap_ = pnh_.subscribe<grid_map_msgs::GridMap>("raw_elevation_map", 1, &BevInferenceROS::elevationMapCb,
@@ -112,32 +117,32 @@ bool BevInferenceROS::init()
   return true;
 }
 
-bool BevInferenceROS::readParameters()
-{
-  pnh_.param("filter_chain_short", filterChainParametersNameShort_, std::string("grid_map_filters_short"));
-  pnh_.param("filter_chain_micro", filterChainParametersNameMicro_, std::string("grid_map_filters_micro"));
-  return true;
-}
+// bool BevInferenceROS::readParameters()
+// {
+//   pnh_.param("filter_chain_short", filterChainParametersNameShort_, std::string("grid_map_filters_short"));
+//   pnh_.param("filter_chain_micro", filterChainParametersNameMicro_, std::string("grid_map_filters_micro"));
+//   return true;
+// }
 
-void BevInferenceROS::infoLeftCb(const sensor_msgs::CameraInfoConstPtr& info_ptr)
-{
-  // Extract P matrix elements from the CameraInfo message
-  const std::vector<double> P_data(info_ptr->P.begin(), info_ptr->P.end());
-  // Populate the class variable P from the K matrix data
-  P_left_ = Eigen::Map<const Eigen::Matrix<double, 3, 4, Eigen::RowMajor>>(P_data.data());
-  subCamInfoLeft_.shutdown();
-  camInfoLeftRec_ = true;
-}
+// void BevInferenceROS::infoLeftCb(const sensor_msgs::CameraInfoConstPtr& info_ptr)
+// {
+//   // Extract P matrix elements from the CameraInfo message
+//   const std::vector<double> P_data(info_ptr->P.begin(), info_ptr->P.end());
+//   // Populate the class variable P from the K matrix data
+//   P_left_ = Eigen::Map<const Eigen::Matrix<double, 3, 4, Eigen::RowMajor>>(P_data.data());
+//   subCamInfoLeft_.shutdown();
+//   camInfoLeftRec_ = true;
+// }
 
-void BevInferenceROS::infoRightCb(const sensor_msgs::CameraInfoConstPtr& info_ptr)
-{
-  // Extract P matrix elements from the CameraInfo message
-  const std::vector<double> P_data(info_ptr->P.begin(), info_ptr->P.end());
-  // Populate the class variable P from the K matrix data
-  P_right_ = Eigen::Map<const Eigen::Matrix<double, 3, 4, Eigen::RowMajor>>(P_data.data());
-  subCamInfoRight_.shutdown();
-  camInfoRightRec_ = true;
-}
+// void BevInferenceROS::infoRightCb(const sensor_msgs::CameraInfoConstPtr& info_ptr)
+// {
+//   // Extract P matrix elements from the CameraInfo message
+//   const std::vector<double> P_data(info_ptr->P.begin(), info_ptr->P.end());
+//   // Populate the class variable P from the K matrix data
+//   P_right_ = Eigen::Map<const Eigen::Matrix<double, 3, 4, Eigen::RowMajor>>(P_data.data());
+//   subCamInfoRight_.shutdown();
+//   camInfoRightRec_ = true;
+// }
 
 void BevInferenceROS::infoFrontCb(const sensor_msgs::CameraInfoConstPtr& info_ptr)
 {
@@ -161,7 +166,7 @@ void BevInferenceROS::infoBackCb(const sensor_msgs::CameraInfoConstPtr& info_ptr
 
 void BevInferenceROS::camInfoInitCb()
 {
-  if (camInfoLeftRec_ && camInfoRightRec_ && camInfoFrontRec_ && camInfoBackRec_)
+  if (camInfoFrontRec_ && camInfoBackRec_)
   {
     std::cout << "All K Matrices initialized" << std::endl;
     camInfoInit_ = true;
@@ -188,8 +193,7 @@ void BevInferenceROS::inferenceCb()
   static auto prev_ts = ros::Time(0.0);
   std::cout << camInfoInit_ << " | " << camFrontRec_ << " | " << gridmapRec_ << std::endl;
   // TODO Move the Image related callbacks, and everything in a vector so that can be handled by a for loop
-  if (camInfoInit_ && camFrontRec_ && gridmapRec_ && camLeftRec_ && camRightRec_ && camBackRec_ && gvomRec_ &&
-      velodyneRec_)
+  if (camInfoInit_ && camFrontRec_ && gridmapRec_ && camBackRec_ && cloudRec_)
   {
     auto ts = ros::Time::now();
     std::cout << "ts delta:" << (ts - prev_ts).toSec() << std::endl;
@@ -204,14 +208,15 @@ void BevInferenceROS::inferenceCb()
     imageTransVect_.clear();
 
     // Acquire the mutices
-    std::lock(velodyneMtx_, elevationMapMtx_, frontMtx_, backMtx_, leftMtx_, rightMtx_, voxelMapMtx_);
+    // std::lock(velodyneMtx_, elevationMapMtx_, frontMtx_, backMtx_, leftMtx_, rightMtx_, voxelMapMtx_);
+    std::lock(cloudMtx_, elevationMapMtx_, frontMtx_, backMtx_, voxelMapMtx_);
 
     auto img_ts = imgTs_;
     // For the images, compute the rotation and translation
     Matrix4d frontTF = T_sensor_gravity__map_ * T_map__front_cam_link_;
     Matrix4d backTF = T_sensor_gravity__map_ * T_map__back_cam_link_;
-    Matrix4d leftTF = T_sensor_gravity__map_ * T_map__left_cam_link_;
-    Matrix4d rightTF = T_sensor_gravity__map_ * T_map__right_cam_link_;
+    // Matrix4d leftTF = T_sensor_gravity__map_ * T_map__left_cam_link_;
+    // Matrix4d rightTF = T_sensor_gravity__map_ * T_map__right_cam_link_;
 
     // Convert each image to vector of Eigen Matrices for easy pybind conversion
     // std::vector<ColMatrixXf> frontImg, backImg, leftImg, RightImg;
@@ -221,27 +226,32 @@ void BevInferenceROS::inferenceCb()
     // convertToMultichannel(rightImage_, RightImg);
     // convertToMultichannel(backImage_, backImg);
     std::vector<ColMatrixXf> frontImg(frontImage_);
-    std::vector<ColMatrixXf> leftImg(leftImage_);
-    std::vector<ColMatrixXf> rightImg(rightImage_);
+    // std::vector<ColMatrixXf> leftImg(leftImage_);
+    // std::vector<ColMatrixXf> rightImg(rightImage_);
     std::vector<ColMatrixXf> backImg(backImage_);
 
-    imageVect_.insert(imageVect_.end(), { frontImg, leftImg, rightImg, backImg });
+    // imageVect_.insert(imageVect_.end(), { frontImg, leftImg, rightImg, backImg });
+    imageVect_.insert(imageVect_.end(), {frontImg, backImg});
     camFrontRec_ = false;
     camBackRec_ = true;
 
     // Release the Image mutices
     frontMtx_.unlock();
     backMtx_.unlock();
-    leftMtx_.unlock();
-    rightMtx_.unlock();
+    // leftMtx_.unlock();
+    // rightMtx_.unlock();
 
     // Put rotation, translation and Intrinsics in vector
-    imageRotVect_.insert(imageRotVect_.end(), { frontTF.block<3, 3>(0, 0), leftTF.block<3, 3>(0, 0),
-                                                rightTF.block<3, 3>(0, 0), backTF.block<3, 3>(0, 0) });
-    imageTransVect_.insert(imageTransVect_.end(), { frontTF.block<3, 1>(0, 3), leftTF.block<3, 1>(0, 3),
-                                                    rightTF.block<3, 1>(0, 3), backTF.block<3, 1>(0, 3) });
-    kVect_.insert(kVect_.end(), { P_front_.block<3, 3>(0, 0), P_left_.block<3, 3>(0, 0), P_right_.block<3, 3>(0, 0),
-                                  P_back_.block<3, 3>(0, 0) });
+    // imageRotVect_.insert(imageRotVect_.end(), { frontTF.block<3, 3>(0, 0), leftTF.block<3, 3>(0, 0),
+    //                                             rightTF.block<3, 3>(0, 0), backTF.block<3, 3>(0, 0) });
+    // imageTransVect_.insert(imageTransVect_.end(), { frontTF.block<3, 1>(0, 3), leftTF.block<3, 1>(0, 3),
+    //                                                 rightTF.block<3, 1>(0, 3), backTF.block<3, 1>(0, 3) });
+    // kVect_.insert(kVect_.end(), { P_front_.block<3, 3>(0, 0), P_left_.block<3, 3>(0, 0), P_right_.block<3, 3>(0, 0),
+    //                               P_back_.block<3, 3>(0, 0) });
+
+    imageRotVect_.insert(imageRotVect_.end(), { frontTF.block<3, 3>(0, 0), backTF.block<3, 3>(0, 0) });
+    imageTransVect_.insert(imageTransVect_.end(), { frontTF.block<3, 1>(0, 3), backTF.block<3, 1>(0, 3) });
+    kVect_.insert(kVect_.end(), { P_front_.block<3, 3>(0, 0), P_back_.block<3, 3>(0, 0) });
 
     // Transform the Raw PCD data to the sensor gravity frame (T-sensor_grav__map * T-map__base_link * raw PCD)
     // For now we are just passing the TF and the Pointcloud in baselink frame
@@ -249,13 +259,13 @@ void BevInferenceROS::inferenceCb()
 
     // std::cout << "PCD SIZE: " << pcd_.rows() << " , "<< pcd_.cols() << std::endl;
     RowMatrixXf pcd_data = pcd_;
-    velodyneRec_ = false;
+    cloudRec_ = false;
     // Release the PCD Mutex
-    velodyneMtx_.unlock();
+    cloudMtx_.unlock();
 
-    RowMatrixXf gvom_data = gvom_;
-    // Release the PCD Mutex
-    voxelMapMtx_.unlock();
+    // RowMatrixXf gvom_data = gvom_;
+    // // Release the PCD Mutex
+    // voxelMapMtx_.unlock();
 
     // For GridMap
     // GridMap eleMap;
@@ -318,37 +328,109 @@ void BevInferenceROS::inferenceCb()
 
     auto time_before_py = std::chrono::high_resolution_clock::now();
 
+    // std::vector<std::string> layer_names = {
+    //   "wheel_risk_bev",
+    //   "elevation",
+    // };
+
     std::vector<std::string> layer_names = {
-      "wheel_risk_bev",
       "elevation",
+      "preferred_area"
     };
 
-    std::vector<std::string> layer_names_short = {
-      "cost",
-      "elevation",
-    };
+    // std::vector<std::string> layer_names_short = {
+    //   "cost",
+    //   "elevation",
+    // };
+
+    // // Map layer pointers
+    // // std::vector<std::unique_ptr<RowMatrixXf>> layer_ptr_micro(layer_names.size());
+    // // std::vector<std::unique_ptr<RowMatrixXf>> layer_ptr_short(layer_names_short.size());
+
+    // // Create Gridmap
+    // grid_map::GridMap gridMapMicro;
+    // grid_map::GridMap gridMapShort;
+    // // Call the Python Function for inference
+    // {
+    //   py::gil_scoped_acquire acquire;
+    //   layer_ptr_micro[0] = std::make_unique<RowMatrixXf>(mapWidthMicro_, mapWidthMicro_);
+    //   layer_ptr_micro[1] = std::make_unique<RowMatrixXf>(mapWidthMicro_, mapWidthMicro_);
+
+    //   layer_ptr_short[0] = std::make_unique<RowMatrixXf>(mapWidthShort_, mapWidthShort_);
+    //   layer_ptr_short[1] = std::make_unique<RowMatrixXf>(mapWidthShort_, mapWidthShort_);
+
+    //   pyHandle_.attr("infer_python")(
+    //       pyHandle_, imageVect_, imageRotVect_, imageTransVect_, kVect_, pcd_data, gvom_data,
+    //       T_sensor_gravity__baselink, eleMapEigen, yaw, shift, T_sensor_origin_link__map_, T_sensor_gravity__map_,
+    //       Eigen::Ref<RowMatrixXf>(*layer_ptr_micro[0]), Eigen::Ref<RowMatrixXf>(*layer_ptr_micro[1]),
+    //       Eigen::Ref<RowMatrixXf>(*layer_ptr_short[0]), Eigen::Ref<RowMatrixXf>(*layer_ptr_short[1]));
+
+    //   // auto predictions = pyArrayToTwoEigenMatrices(py_array_pred);
+    //   py::gil_scoped_release release;
+    //   // std::cout << "EIGEN MAT" << (*layer_ptr[0]) << std::endl;
+    //   auto time_before_gridmap = std::chrono::high_resolution_clock::now();
+    //   auto T_map__sensor_gravity = T_sensor_gravity__map_.inverse();
+    //   Eigen::Vector2d gridmap_position(T_map__sensor_gravity(0, 3), T_map__sensor_gravity(1, 3));
+
+    //   // gridMapMicro.setFrameId(eleMap.getFrameId());
+    //   gridMapMicro.setFrameId("crl_rzr/map");
+    //   gridMapMicro.setTimestamp(img_ts);
+    //   grid_map::Length length_gridmap_micro(mapWidthMicro_ * resMicro_, mapWidthMicro_ * resMicro_);
+    //   gridMapMicro.setGeometry(length_gridmap_micro, resMicro_, gridmap_position);
+
+    //   gridMapShort.setFrameId("crl_rzr/map");
+    //   gridMapShort.setTimestamp(img_ts);
+    //   grid_map::Length length_gridmap_short(mapWidthShort_ * resShort_, mapWidthShort_ * resShort_);
+    //   gridMapShort.setGeometry(length_gridmap_short, resShort_, gridmap_position);
+
+    //   for (size_t l = 0; l < layer_names.size(); ++l)
+    //     gridMapMicro.add(layer_names[l], *layer_ptr_micro[l]);
+
+    //   for (size_t l = 0; l < layer_names_short.size(); ++l)
+    //     gridMapShort.add(layer_names_short[l], *layer_ptr_short[l]);
+
+    //   auto time_after_gridmap = std::chrono::high_resolution_clock::now();
+    //   auto duration_postprocessing =
+    //       std::chrono::duration_cast<std::chrono::microseconds>(time_after_gridmap - time_before_gridmap).count();
+    //   std::cout << "Time spent gridmap postprocessing: " << duration_postprocessing << " microseconds" << std::endl;
+    // }
+    // auto bef_pub = std::chrono::high_resolution_clock::now();
+
+    // grid_map::GridMap outputShortMap;
+    // grid_map::GridMap outputMicroMap;
+
+    // if (!filterChainShort_.update(gridMapShort, outputShortMap))
+    // {
+    //   std::cout << "EROORR" << std::endl;
+    //   ROS_ERROR("Could not update the grid map filter chain!");
+    //   // return;
+    // }
+    // if (!filterChainMicro_.update(gridMapMicro, outputMicroMap))
+    // {
+    //   std::cout << "EROORR" << std::endl;
+    //   ROS_ERROR("Could not update the grid map filter chain!");
+    //   // return;
+    // }
+
+    // publishMaps(gridMapMicro, outputMicroMap, outputShortMap);
 
     // Map layer pointers
-    std::vector<std::unique_ptr<RowMatrixXf>> layer_ptr_micro(layer_names.size());
-    std::vector<std::unique_ptr<RowMatrixXf>> layer_ptr_short(layer_names_short.size());
+    // std::vector<std::unique_ptr<RowMatrixXf>> layer_ptr_micro(layer_names.size());
+    // std::vector<std::unique_ptr<RowMatrixXf>> layer_ptr_short(layer_names_short.size());
 
     // Create Gridmap
-    grid_map::GridMap gridMapMicro;
-    grid_map::GridMap gridMapShort;
+    grid_map::GridMap gridMap;
+    // grid_map::GridMap gridMapShort;
     // Call the Python Function for inference
     {
       py::gil_scoped_acquire acquire;
-      layer_ptr_micro[0] = std::make_unique<RowMatrixXf>(mapWidthMicro_, mapWidthMicro_);
-      layer_ptr_micro[1] = std::make_unique<RowMatrixXf>(mapWidthMicro_, mapWidthMicro_);
-
-      layer_ptr_short[0] = std::make_unique<RowMatrixXf>(mapWidthShort_, mapWidthShort_);
-      layer_ptr_short[1] = std::make_unique<RowMatrixXf>(mapWidthShort_, mapWidthShort_);
+      layer_ptr[0] = std::make_unique<RowMatrixXf>(mapWidth_, mapWidth_);
+      layer_ptr[1] = std::make_unique<RowMatrixXf>(mapWidth_, mapWidth_);
 
       pyHandle_.attr("infer_python")(
-          pyHandle_, imageVect_, imageRotVect_, imageTransVect_, kVect_, pcd_data, gvom_data,
+          pyHandle_, imageVect_, imageRotVect_, imageTransVect_, kVect_, pcd_data,
           T_sensor_gravity__baselink, eleMapEigen, yaw, shift, T_sensor_origin_link__map_, T_sensor_gravity__map_,
-          Eigen::Ref<RowMatrixXf>(*layer_ptr_micro[0]), Eigen::Ref<RowMatrixXf>(*layer_ptr_micro[1]),
-          Eigen::Ref<RowMatrixXf>(*layer_ptr_short[0]), Eigen::Ref<RowMatrixXf>(*layer_ptr_short[1]));
+          Eigen::Ref<RowMatrixXf>(*layer_ptr[0]), Eigen::Ref<RowMatrixXf>(*layer_ptr_micro[1]),
 
       // auto predictions = pyArrayToTwoEigenMatrices(py_array_pred);
       py::gil_scoped_release release;
@@ -358,21 +440,21 @@ void BevInferenceROS::inferenceCb()
       Eigen::Vector2d gridmap_position(T_map__sensor_gravity(0, 3), T_map__sensor_gravity(1, 3));
 
       // gridMapMicro.setFrameId(eleMap.getFrameId());
-      gridMapMicro.setFrameId("crl_rzr/map");
-      gridMapMicro.setTimestamp(img_ts);
-      grid_map::Length length_gridmap_micro(mapWidthMicro_ * resMicro_, mapWidthMicro_ * resMicro_);
-      gridMapMicro.setGeometry(length_gridmap_micro, resMicro_, gridmap_position);
+      gridMap.setFrameId("map");
+      gridMap.setTimestamp(img_ts);
+      grid_map::Length length_gridmap(mapWidth_ * res_, mapWidth_ * res_);
+      gridMap.setGeometry(length_gridmap, res_, gridmap_position);
 
-      gridMapShort.setFrameId("crl_rzr/map");
-      gridMapShort.setTimestamp(img_ts);
-      grid_map::Length length_gridmap_short(mapWidthShort_ * resShort_, mapWidthShort_ * resShort_);
-      gridMapShort.setGeometry(length_gridmap_short, resShort_, gridmap_position);
+      // gridMapShort.setFrameId("crl_rzr/map");
+      // gridMapShort.setTimestamp(img_ts);
+      // grid_map::Length length_gridmap_short(mapWidthShort_ * resShort_, mapWidthShort_ * resShort_);
+      // gridMapShort.setGeometry(length_gridmap_short, resShort_, gridmap_position);
+
+      // for (size_t l = 0; l < layer_names.size(); ++l)
+      //   gridMapMicro.add(layer_names[l], *layer_ptr_micro[l]);
 
       for (size_t l = 0; l < layer_names.size(); ++l)
-        gridMapMicro.add(layer_names[l], *layer_ptr_micro[l]);
-
-      for (size_t l = 0; l < layer_names_short.size(); ++l)
-        gridMapShort.add(layer_names_short[l], *layer_ptr_short[l]);
+        gridMap.add(layer_names[l], *layer_ptr[l]);
 
       auto time_after_gridmap = std::chrono::high_resolution_clock::now();
       auto duration_postprocessing =
@@ -381,23 +463,23 @@ void BevInferenceROS::inferenceCb()
     }
     auto bef_pub = std::chrono::high_resolution_clock::now();
 
-    grid_map::GridMap outputShortMap;
-    grid_map::GridMap outputMicroMap;
+    grid_map::GridMap outputMap;
+    // grid_map::GridMap outputMicroMap;
 
-    if (!filterChainShort_.update(gridMapShort, outputShortMap))
-    {
-      std::cout << "EROORR" << std::endl;
-      ROS_ERROR("Could not update the grid map filter chain!");
-      // return;
-    }
-    if (!filterChainMicro_.update(gridMapMicro, outputMicroMap))
-    {
-      std::cout << "EROORR" << std::endl;
-      ROS_ERROR("Could not update the grid map filter chain!");
-      // return;
-    }
+    // if (!filterChainShort_.update(gridMap, outputMap))
+    // {
+    //   std::cout << "EROORR" << std::endl;
+    //   ROS_ERROR("Could not update the grid map filter chain!");
+    //   // return;
+    // }
+    // if (!filterChainMicro_.update(gridMapMicro, outputMicroMap))
+    // {
+    //   std::cout << "EROORR" << std::endl;
+    //   ROS_ERROR("Could not update the grid map filter chain!");
+    //   // return;
+    // }
 
-    publishMaps(gridMapMicro, outputMicroMap, outputShortMap);
+    publishMaps(outputMap)
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -410,45 +492,45 @@ void BevInferenceROS::inferenceCb()
   }
 }
 
-void BevInferenceROS::publishMaps(GridMap& map_micro, GridMap& map_micro_vel, GridMap& map_short)
+void BevInferenceROS::publishMaps(GridMap& map)
 {
-  if (pubGridMapMicro_.getNumSubscribers() > 0)
+  // if (pubGridMapMicro_.getNumSubscribers() > 0)
+  // {
+  //   auto msg = boost::make_shared<GridMapMsg>();
+  //   grid_map::GridMapRosConverter::toMessage(map_micro, *msg);  // TODO Implement with std::move
+
+  //   int32_t bytes_estimate = -1;
+  //   pubGridMapMicro_.publish(msg);
+  //   // publish a lightweight message for easy use with rostopic delay
+  //   grid_map_msgs::GridMapInfo info_msg;
+  //   info_msg = msg->info;
+  //   pubGridMapMicroInfo_.publish(info_msg);
+  // }
+
+  // if (pubGridMapMicroVel_.getNumSubscribers() > 0)
+  // {
+  //   auto msg = boost::make_shared<GridMapMsg>();
+  //   grid_map::GridMapRosConverter::toMessage(map_micro_vel, *msg);  // TODO Implement with std::move
+
+  //   int32_t bytes_estimate = -1;
+  //   pubGridMapMicroVel_.publish(msg);
+  //   // publish a lightweight message for easy use with rostopic delay
+  //   grid_map_msgs::GridMapInfo info_msg;
+  //   info_msg = msg->info;
+  //   pubGridMapMicroVelInfo_.publish(info_msg);
+  // }
+
+  if (pubGridMap_.getNumSubscribers() > 0)
   {
     auto msg = boost::make_shared<GridMapMsg>();
-    grid_map::GridMapRosConverter::toMessage(map_micro, *msg);  // TODO Implement with std::move
+    grid_map::GridMapRosConverter::toMessage(map, *msg);  // TODO Implement with std::move
 
     int32_t bytes_estimate = -1;
-    pubGridMapMicro_.publish(msg);
+    pubGridMap_.publish(msg);
     // publish a lightweight message for easy use with rostopic delay
     grid_map_msgs::GridMapInfo info_msg;
     info_msg = msg->info;
-    pubGridMapMicroInfo_.publish(info_msg);
-  }
-
-  if (pubGridMapMicroVel_.getNumSubscribers() > 0)
-  {
-    auto msg = boost::make_shared<GridMapMsg>();
-    grid_map::GridMapRosConverter::toMessage(map_micro_vel, *msg);  // TODO Implement with std::move
-
-    int32_t bytes_estimate = -1;
-    pubGridMapMicroVel_.publish(msg);
-    // publish a lightweight message for easy use with rostopic delay
-    grid_map_msgs::GridMapInfo info_msg;
-    info_msg = msg->info;
-    pubGridMapMicroVelInfo_.publish(info_msg);
-  }
-
-  if (pubGridMapShort_.getNumSubscribers() > 0)
-  {
-    auto msg = boost::make_shared<GridMapMsg>();
-    grid_map::GridMapRosConverter::toMessage(map_short, *msg);  // TODO Implement with std::move
-
-    int32_t bytes_estimate = -1;
-    pubGridMapShort_.publish(msg);
-    // publish a lightweight message for easy use with rostopic delay
-    grid_map_msgs::GridMapInfo info_msg;
-    info_msg = msg->info;
-    pubGridMapShortInfo_.publish(info_msg);
+    pubGridMapInfo_.publish(info_msg);
   }
 }
 
@@ -461,58 +543,58 @@ void BevInferenceROS::elevationMapCb(const grid_map_msgs::GridMapConstPtr& msg)
   gridmapRec_ = true;
 }
 
-void BevInferenceROS::gvomCb(const sensor_msgs::PointCloud2ConstPtr& gvom_ptr)
+// void BevInferenceROS::gvomCb(const sensor_msgs::PointCloud2ConstPtr& gvom_ptr)
+// {
+//   std::cout << "Voxel Map callback" << std::endl;
+
+//   // TODO (FOr fusing the GVOM Cloud)
+
+//   // Check number of points
+//   if (gvom_ptr->width < voxelMapMinPts_)
+//   {
+//     ROS_WARN("BevInferenceROS: Empty VoxelMap Received !!!");
+//     return;
+//   }
+//   else
+//   {
+//     ROS_INFO("\033[36mVoxel\033[0m pts: %d", gvom_ptr->width);
+//   }
+
+//   // Acquire Mutex
+//   std::lock_guard<std::mutex> lock(voxelMapMtx_);
+//   // Acquire Mutex
+
+//   // Create Eigen matrix from pointcloud2
+//   auto& num_pts = gvom_ptr->width;
+
+//   gvom_.resize(num_pts, 3);
+//   RowMatrixXf probs_pcl(num_pts, probFieldNames_.size());
+//   pointCloudToMatrix(gvom_ptr, false, gvom_, probs_pcl);
+//   gvomRec_ = true;
+//   // std::cout << "Velodyne CB: " << std::this_thread::get_id() << std::endl;
+// }
+
+void BevInferenceROS::cloudCb(const sensor_msgs::PointCloud2ConstPtr& cloud_ptr)
 {
-  std::cout << "Voxel Map callback" << std::endl;
-
-  // TODO (FOr fusing the GVOM Cloud)
-
-  // Check number of points
-  if (gvom_ptr->width < voxelMapMinPts_)
-  {
-    ROS_WARN("BevInferenceROS: Empty VoxelMap Received !!!");
-    return;
-  }
-  else
-  {
-    ROS_INFO("\033[36mVoxel\033[0m pts: %d", gvom_ptr->width);
-  }
-
-  // Acquire Mutex
-  std::lock_guard<std::mutex> lock(voxelMapMtx_);
-  // Acquire Mutex
-
-  // Create Eigen matrix from pointcloud2
-  auto& num_pts = gvom_ptr->width;
-
-  gvom_.resize(num_pts, 3);
-  RowMatrixXf probs_pcl(num_pts, probFieldNames_.size());
-  pointCloudToMatrix(gvom_ptr, false, gvom_, probs_pcl);
-  gvomRec_ = true;
-  // std::cout << "Velodyne CB: " << std::this_thread::get_id() << std::endl;
-}
-
-void BevInferenceROS::velodyneCb(const sensor_msgs::PointCloud2ConstPtr& cloud_ptr)
-{
-  // std::cout << "Velodyne LiDAR callback" << std::endl;
+  // std::cout << "Cloud LiDAR callback" << std::endl;
 
   // Check number of points
   if (cloud_ptr->width < pclMinPts_)
   {
-    ROS_WARN("BevInferenceROS: Empty PointCloud Received from Velodyne !!!");
+    ROS_WARN("BevInferenceROS: Empty PointCloud Received from Cloud !!!");
     return;
   }
   else
   {
-    ROS_INFO("\033[36mVelodyne\033[0m pts: %d", cloud_ptr->width);
+    ROS_INFO("\033[36mCloud\033[0m pts: %d", cloud_ptr->width);
   }
 
   // Acquire Mutex
-  std::lock_guard<std::mutex> lock(velodyneMtx_);
+  std::lock_guard<std::mutex> lock(cloudMtx_);
   // Lookup for the TF
   try
   {
-    T_map__base_link_ = tf2::transformToEigen(tfBufferV_->lookupTransform(mapFrame_, cloud_ptr->header.frame_id,
+    T_map__base_link_ = tf2::transformToEigen(tfBufferC_->lookupTransform(mapFrame_, cloud_ptr->header.frame_id,
                                                                           cloud_ptr->header.stamp, ros::Duration(0.1)))
                             .matrix();
   }
@@ -539,10 +621,21 @@ void BevInferenceROS::camFrontCb(const sensor_msgs::ImageConstPtr& cam_ptr)
   std::cout << "Front Cam callback took (s)" << (ts - prev_ts).toSec() << std::endl;
   prev_ts = ts;
 
-  cv::Mat image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
+  cv::Mat image;
+
+  if (cam_ptr->encoding == "compressed")
+  {
+    // Decompress the image
+    auto compressed_image = cam_ptr->data;
+    image = cv::imdecode(cv::Mat(compressed_image), cv::IMREAD_COLOR);
+  }
+  else
+  {
+    image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
+  }
 
   // Change encoding to RGB/RGBA
-  if (cam_ptr->encoding == "bgr8")
+  if (cam_ptr->encoding == "bgr8" || cam_ptr->encoding == "compressed")
   {
     cv::cvtColor(image, image, CV_BGR2RGB);
   }
@@ -600,10 +693,22 @@ void BevInferenceROS::camFrontCb(const sensor_msgs::ImageConstPtr& cam_ptr)
 void BevInferenceROS::camBackCb(const sensor_msgs::ImageConstPtr& cam_ptr)
 {
   std::cout << "Back Cam callback" << std::endl;
-  cv::Mat image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
+
+  cv::Mat image;
+
+  if (cam_ptr->encoding == "compressed")
+  {
+    // Decompress the image
+    auto compressed_image = cam_ptr->data;
+    image = cv::imdecode(cv::Mat(compressed_image), cv::IMREAD_COLOR);
+  }
+  else
+  {
+    image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
+  }
 
   // Change encoding to RGB/RGBA
-  if (cam_ptr->encoding == "bgr8")
+  if (cam_ptr->encoding == "bgr8" || cam_ptr->encoding == "compressed")
   {
     cv::cvtColor(image, image, CV_BGR2RGB);
   }
@@ -629,90 +734,89 @@ void BevInferenceROS::camBackCb(const sensor_msgs::ImageConstPtr& cam_ptr)
     return;
   }
 
-  // backImage_ = std::move(image);
   backImage_.clear();
   convertToMultichannel(image, backImage_);
   camBackRec_ = true;
 }
 
-void BevInferenceROS::camLeftCb(const sensor_msgs::ImageConstPtr& cam_ptr)
-{
-  std::cout << "Left Cam callback" << std::endl;
+// void BevInferenceROS::camLeftCb(const sensor_msgs::ImageConstPtr& cam_ptr)
+// {
+//   std::cout << "Left Cam callback" << std::endl;
 
-  cv::Mat image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
+//   cv::Mat image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
 
-  // Change encoding to RGB/RGBA
-  if (cam_ptr->encoding == "bgr8")
-  {
-    cv::cvtColor(image, image, CV_BGR2RGB);
-  }
-  else if (cam_ptr->encoding == "bgra8")
-  {
-    cv::cvtColor(image, image, CV_BGRA2RGBA);
-  }
+//   // Change encoding to RGB/RGBA
+//   if (cam_ptr->encoding == "bgr8")
+//   {
+//     cv::cvtColor(image, image, CV_BGR2RGB);
+//   }
+//   else if (cam_ptr->encoding == "bgra8")
+//   {
+//     cv::cvtColor(image, image, CV_BGRA2RGBA);
+//   }
 
-  cv::resize(image, image, cv::Size(resizeWidth_, resizeHeight_));
+//   cv::resize(image, image, cv::Size(resizeWidth_, resizeHeight_));
 
-  std::lock_guard<std::mutex> lock(leftMtx_);
-  // Lookup For the TF
-  try
-  {
-    T_map__left_cam_link_ =
-        tf2::transformToEigen(tfBufferLC_->lookupTransform(mapFrame_, cam_ptr->header.frame_id, cam_ptr->header.stamp,
-                                                           ros::Duration(0.1)))
-            .matrix();
-  }
-  catch (tf2::TransformException& ex)
-  {
-    ROS_WARN("%s\nSKIPPED %s", ex.what(), cam_ptr->header.frame_id.c_str());
-    return;
-  }
+//   std::lock_guard<std::mutex> lock(leftMtx_);
+//   // Lookup For the TF
+//   try
+//   {
+//     T_map__left_cam_link_ =
+//         tf2::transformToEigen(tfBufferLC_->lookupTransform(mapFrame_, cam_ptr->header.frame_id, cam_ptr->header.stamp,
+//                                                            ros::Duration(0.1)))
+//             .matrix();
+//   }
+//   catch (tf2::TransformException& ex)
+//   {
+//     ROS_WARN("%s\nSKIPPED %s", ex.what(), cam_ptr->header.frame_id.c_str());
+//     return;
+//   }
 
-  // leftImage_ = std::move(image);
-  leftImage_.clear();
-  convertToMultichannel(image, leftImage_);
-  camLeftRec_ = true;
-  // std::cout << "Left CB: " << std::this_thread::get_id() << std::endl;
-}
+//   // leftImage_ = std::move(image);
+//   leftImage_.clear();
+//   convertToMultichannel(image, leftImage_);
+//   camLeftRec_ = true;
+//   // std::cout << "Left CB: " << std::this_thread::get_id() << std::endl;
+// }
 
-void BevInferenceROS::camRightCb(const sensor_msgs::ImageConstPtr& cam_ptr)
-{
-  std::cout << "Right Cam callback" << std::endl;
+// void BevInferenceROS::camRightCb(const sensor_msgs::ImageConstPtr& cam_ptr)
+// {
+//   std::cout << "Right Cam callback" << std::endl;
 
-  cv::Mat image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
+//   cv::Mat image = cv_bridge::toCvShare(cam_ptr, cam_ptr->encoding)->image;
 
-  // Change encoding to RGB/RGBA
-  if (cam_ptr->encoding == "bgr8")
-  {
-    cv::cvtColor(image, image, CV_BGR2RGB);
-  }
-  else if (cam_ptr->encoding == "bgra8")
-  {
-    cv::cvtColor(image, image, CV_BGRA2RGBA);
-  }
+//   // Change encoding to RGB/RGBA
+//   if (cam_ptr->encoding == "bgr8")
+//   {
+//     cv::cvtColor(image, image, CV_BGR2RGB);
+//   }
+//   else if (cam_ptr->encoding == "bgra8")
+//   {
+//     cv::cvtColor(image, image, CV_BGRA2RGBA);
+//   }
 
-  cv::resize(image, image, cv::Size(resizeWidth_, resizeHeight_));
+//   cv::resize(image, image, cv::Size(resizeWidth_, resizeHeight_));
 
-  std::lock_guard<std::mutex> lock(rightMtx_);
-  // Lookup For the TF
-  try
-  {
-    T_map__right_cam_link_ =
-        tf2::transformToEigen(tfBufferRC_->lookupTransform(mapFrame_, cam_ptr->header.frame_id, cam_ptr->header.stamp,
-                                                           ros::Duration(0.1)))
-            .matrix();
-  }
-  catch (tf2::TransformException& ex)
-  {
-    ROS_WARN("%s\nSKIPPED %s", ex.what(), cam_ptr->header.frame_id.c_str());
-    return;
-  }
+//   std::lock_guard<std::mutex> lock(rightMtx_);
+//   // Lookup For the TF
+//   try
+//   {
+//     T_map__right_cam_link_ =
+//         tf2::transformToEigen(tfBufferRC_->lookupTransform(mapFrame_, cam_ptr->header.frame_id, cam_ptr->header.stamp,
+//                                                            ros::Duration(0.1)))
+//             .matrix();
+//   }
+//   catch (tf2::TransformException& ex)
+//   {
+//     ROS_WARN("%s\nSKIPPED %s", ex.what(), cam_ptr->header.frame_id.c_str());
+//     return;
+//   }
 
-  // rightImage_ = std::move(image);
-  rightImage_.clear();
-  convertToMultichannel(image, rightImage_);
-  camRightRec_ = true;
-}
+//   // rightImage_ = std::move(image);
+//   rightImage_.clear();
+//   convertToMultichannel(image, rightImage_);
+//   camRightRec_ = true;
+// }
 
 // Following Code Snippet taken from GVOM (voxel_mapper_ros.cpp)
 // Convert pointcloud to Eigen matrices (xyz, probs)

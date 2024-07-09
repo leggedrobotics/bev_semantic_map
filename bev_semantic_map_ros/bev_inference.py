@@ -75,7 +75,6 @@ def chop(t, dim=6):
 class BevInference:
     def __init__(self, wandb_logging=False, img_backbone=False, pcd_backbone=False):
         # Loading params and the model
-
         self._model_cfg = ModelParams()
         self._run_cfg = RunParams()
         self._data_cfg = DataParams()
