@@ -11,9 +11,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .ops import Voxelization
 
-from icecream import ic
-
-
 class PillarLayer(nn.Module):
     # TODO check lincense: https://github.com/zhulf0804/PointPillars/blob/main/model/pointpillars.py
     def __init__(self, voxel_size, point_cloud_range, max_num_points, max_voxels):

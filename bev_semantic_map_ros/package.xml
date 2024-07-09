@@ -4,7 +4,7 @@
   <version>1.0.0</version>
   <description>The bev_semantic_map_ros package</description>
   <maintainer email="schmirob@ethz.ch">Robin Schmid</maintainer>
-  <author email="patelm@ethz.ch">Robin Schmid</author>
+  <author email="schmirob@ethz.ch">Robin Schmid</author>
   <author email="patelm@ethz.ch">Manthan Patel</author>
   <license>TODO</license>
 

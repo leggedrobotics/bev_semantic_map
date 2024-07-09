@@ -41,7 +41,7 @@ from bevnet.network.bev_net import BevNet
 from bevnet.dataset import get_bev_dataloader
 from bevnet.utils import Timer, compute_evaluation
 
-sys.path.append("/home/jonfrey/workspaces/bev_new_ws/src/perception_bev_learning")
+sys.path.append("/home/rschmid/catkin_ws/src/bev_semantic_map")
 
 # from perception_bev_learning.loss import LossManagerMulti
 # from perception_bev_learning.utils import normalize_img, get_gravity_aligned

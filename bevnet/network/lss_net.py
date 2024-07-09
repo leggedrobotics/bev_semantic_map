@@ -11,7 +11,6 @@ from torchvision.models.resnet import resnet18
 from pytictac import Timer
 from .lss_tools import gen_dx_bx, cumsum_trick, QuickCumsum
 from bevnet.ops import bev_pool
-from icecream import ic
 
 
 class Up(nn.Module):

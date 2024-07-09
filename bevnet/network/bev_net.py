@@ -1,7 +1,6 @@
 from bevnet.network import voxelize_pcd_scans
 import torch
 from bevnet.cfg import ModelParams
-from icecream import ic
 import matplotlib.pyplot as plt
 
 from bevnet import network, models

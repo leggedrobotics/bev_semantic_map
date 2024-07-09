@@ -48,7 +48,7 @@ bool BevInferenceROS::init()
     // Import python module
     auto sys = py::module::import("sys");
     auto path = sys.attr("path");
-    std::string module_path = ros::package::getPath("perception_bev_learning_ros");
+    std::string module_path = ros::package::getPath("bev_semantic_map_ros");
     module_path = module_path + "/scripts";
     std::cout << "Initializing Python" << std::endl;
 

@@ -2,8 +2,9 @@
     <arg name="respawn" value="false" />
     <arg name="output" value="screen" /> 
     <param name="use_sim_time" value="true"/>
+    <arg name="robot_namespace" value="bev" />
     <group ns="$(arg robot_namespace)">    
-    <param name="rosout_filename" type="string" value="/home/jonfrey/trial.log" />
+    <!-- <param name="rosout_filename" type="string" value="/home/jonfrey/trial.log" /> -->
     <!-- Inference Node -->
     <node pkg="bev_semantic_map_ros" type="bev_inference_node" name="bev_inference_node" output="$(arg output)"> #launch-prefix="gdb -ex run --args"
         <!-- <remap from="~left/camera_info" to="multisense_left/aux/semantic_image_rect_color/camera_info" />
@@ -27,11 +28,11 @@
         <!-- <remap from="~gvomcloud" to="pointcloud_map/points_short" /> -->
         <remap from="~raw_elevation_map" to="elevation_mapping/elevation_map_raw" />
 
-        <remap from="~bev_trav_map_micro" to="traversability_map/map_micro_bev" />
-        <remap from="~bev_trav_map_short" to="traversability_map/map_short" />
-        <remap from="~bev_trav_map_micro_vel" to="traversability_map/map_micro_instantaneous" />
-        <!-- <remap from="~raw_elevation_map" to="traversability_map_micro/debug_map" /> -->
-        <rosparam command="load" file="$(find bev_semantic_map_ros)/config/trav_map_filter.yaml" subst_value="true"/>
+        <!-- <remap from="~bev_trav_map_micro" to="traversability_map/map_micro_bev" /> -->
+        <!-- <remap from="~bev_trav_map_short" to="traversability_map/map_short" /> -->
+        <!-- <remap from="~bev_trav_map_micro_vel" to="traversability_map/map_micro_instantaneous" /> -->
+        <remap from="~raw_elevation_map" to="traversability_map_micro/debug_map" />
+        <!-- <rosparam command="load" file="$(find bev_semantic_map_ros)/config/trav_map_filter.yaml" subst_value="true"/> -->
     </node>
 
     </group>

@@ -9,15 +9,13 @@ INSTALL_REQUIRES = [
     "tqdm",
     "pip",
     "torchvision",
-    "torch@https://download.pytorch.org/whl/torch-2.1.0+cu121-cp38-cp38-linux_x86_64.whl",
+    # "torch@https://download.pytorch.org/whl/torch-2.1.0+cu121-cp38-cp38-linux_x86_64.whl",
     "torchmetrics",
     "matplotlib",
     "efficientnet-pytorch",
     "opencv-python>=4.6",
     "wandb",
-    "icecream",
     "torchshow",
-
     "scipy",
     "pytictac",
 ]
