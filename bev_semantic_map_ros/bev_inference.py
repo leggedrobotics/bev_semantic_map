@@ -74,9 +74,13 @@ def chop(t, dim=6):
 
 class BevInference:
     def __init__(self, wandb_logging=False, img_backbone=False, pcd_backbone=False):
+        # Loading params and the model
+
         self._model_cfg = ModelParams()
         self._run_cfg = RunParams()
         self._data_cfg = DataParams()
+
+        self.weights_path = WEIGHTS_PATH
 
         if img_backbone:
             self._model_cfg.image_backbone = "lift_splat_shoot_net"
@@ -94,7 +98,7 @@ class BevInference:
         self._loss.cuda()
         self._loss_mean = torch.tensor(0.0)
 
-        self.weights_path = WEIGHTS_PATH
+        self._model.load_state_dict(self.weights_path, map_location=torch.device(DEVICE), strict=True)
 
         # # For now, just use the hardcoded checkpoint path for loading the model
         # self.img_count = 0
@@ -135,11 +139,6 @@ class BevInference:
 
         # model.load_state_dict(state_dict)
         # model.to(self.device)
-
-        # self._model = model
-        # self._model.eval()
-
-        self._model.to(DEVICE)
 
         # # If no specific name is given load the latest model
         # if model_name is None:
