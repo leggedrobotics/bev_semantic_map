@@ -31,24 +31,7 @@ import numpy as np
 import ros_numpy
 from sensor_msgs.msg import Image
 from scipy.spatial.transform import Rotation
-
-from mpl_toolkits.axes_grid1 import ImageGrid
-
-import pickle
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-import torch.nn as nn
-from torchvision.transforms.functional import center_crop
-import torch.nn.functional as F
-
-CMAP_TRAVERSABILITY = sns.color_palette("RdYlBu_r", as_cmap=True)
-CMAP_ELEVATION = sns.color_palette("viridis_r", as_cmap=True)
-CMAP_ERROR = sns.color_palette("vlag", as_cmap=True)
-CMAP_TRAVERSABILITY.set_bad(color="black")
-CMAP_ELEVATION.set_bad(color="black")
-CMAP_ERROR.set_bad(color="black")
-
+import open3d as o3d
 
 """
 Publish GridMap
@@ -342,18 +325,14 @@ class GTVisualization:
 
         # (TODO) Can potentially shift the keys to yaml file
         self.image_keys = [
-            "multisense_front",
-            "multisense_left",
-            "multisense_right",
-            "multisense_back",
+            "hdr_front",
         ]
         # self.gridmap_key = "g_traversability_map_micro"
-        self.gridmap_key = "g_traversability_map_short_gt"
-        self.gridmap_short_key = "g_traversability_map_short_gt"
-        self.anchor_key = "multisense_front"
+        self.gridmap_key = "traversability_map_micro"
+        self.gridmap_short_key = "traversability_map_short"
+        self.anchor_key = "hdr_front"
         self.elevation_layers = ["elevation"]
         self.pointcloud_key = "velodyne_merged_points"
-        self.gvom_key = "pointcloud_map-points_short"
 
         self.vis = SimpleNumpyToRviz(
             init_node=True,
@@ -423,8 +402,8 @@ class GTVisualization:
         )
 
         H_map__sensor_origin_link = get_H_h5py(
-            t=h5py_anchor[f"tf_translation_map__sensor_origin_link"][idx],
-            q=h5py_anchor[f"tf_rotation_xyzw_map__sensor_origin_link"][idx],
+            t=h5py_anchor[f"tf_translation_map_o3d_localization_manager__base_inverted"][idx],
+            q=h5py_anchor[f"tf_rotation_xyzw_map_o3d_localization_manager__base_inverted"][idx],
         )
         H_sensor_origin_link__map = inv(H_map__sensor_origin_link)
         H_sensor_gravity__map = get_gravity_aligned(H_sensor_origin_link__map)
@@ -484,199 +463,24 @@ class GTVisualization:
             ts,
         )
 
-    def get_gridmap_short_data(self, datum, idx):
+    def get_gridmap_short_data(self, datum):
         sk = datum["sequence_key"]
         h5py_grid_map = self.h5py_file[sk][self.gridmap_short_key]
-
         gm_idx = datum[self.gridmap_short_key]
 
         gm_layers = [g.decode("utf-8") for g in h5py_grid_map["layers"]]
 
-        h5py_anchor = self.h5py_file[sk][self.anchor_key]
-        anc_idx = datum[self.anchor_key]
-
-        H_map__sensor_origin_link = get_H_h5py(
-            t=h5py_anchor[f"tf_translation_map__sensor_origin_link"][anc_idx],
-            q=h5py_anchor[f"tf_rotation_xyzw_map__sensor_origin_link"][anc_idx],
-        )
-
-        H_sensor_origin_link__map = inv(H_map__sensor_origin_link)
-        H_sensor_gravity__map = get_gravity_aligned(H_sensor_origin_link__map)
-
-        H_map__grid_map_center = torch.eye(4)
-        H_map__grid_map_center[:3, 3] = torch.tensor(h5py_grid_map[f"position"][gm_idx])
-
-        H_sensor_gravity__grid_map_center = (
-            H_sensor_gravity__map @ H_map__grid_map_center
-        )
-
-        yaw = R.from_matrix(
-            H_sensor_gravity__grid_map_center.clone().numpy()[:3, :3]
-        ).as_euler(seq="zyx", degrees=False)[0]
-
-        sh = [0, 0]
-
         np_data = np.array(h5py_grid_map[f"data"][gm_idx])  # [gm_idx]{gm_idx}
-
 
         grid_map_data = torch.from_numpy(
             np.ascontiguousarray(np.ascontiguousarray(np_data))
         )
-
-        grid_map_data_rotated = affine(
-                grid_map_data[None],
-                angle=np.rad2deg(yaw),
-                translate=sh,
-                scale=1,
-                shear=0,
-                fill=torch.nan,
-            )[0]
-
-        grid_map_data_rotated = F.interpolate(center_crop(
-                    grid_map_data_rotated, (250, 250)
-                ).unsqueeze(0), scale_factor=1.6, mode='bilinear')[0]
-
-        np_data = np.array(grid_map_data_rotated)  # [gm_idx]{gm_idx}
-
-        color_maps = [CMAP_TRAVERSABILITY] * 1
-        print(np_data.shape)
-        print(gm_layers)
-        maps = np_data[2:3, ::-1, ::-1]
-        v_mins = [0.0] * 1
-        v_maxs = [1.0] * 1
-
-        N = maps.shape[0]
-        nrows_ncols = (1, N)
-        fig = plt.figure(figsize=(5, 5))
-        fig.tight_layout(pad=1.1)
-        grid = ImageGrid(fig, 111, nrows_ncols=nrows_ncols, axes_pad=0.1)
-
-        for i in range(N):
-    
-            v_min = (
-                maps[i][~np.isnan(maps[i])].min() if v_mins[i] is None else v_mins[i]
-            )
-            v_max = (
-                maps[i][~np.isnan(maps[i])].max() if v_maxs[i] is None else v_maxs[i]
-            )
-
-            grid[i].imshow(maps[i], cmap=color_maps[i], vmin=v_min, vmax=v_max)
-            grid[i].grid(False)
-        
-        plt.savefig(f"/home/manthan/bev_planner/plots/sample_2_GT_{idx}.svg", format="svg", dpi=500)
 
         return (
             np.array(grid_map_data),
             np.array(h5py_grid_map["resolution"]),
             gm_layers,
         )
-    
-    def colortofloat(self, color):
-        color = color.clip(0, 1)
-        color = color * 255
-        color = color.type(torch.int)
-        res = ((color[0, :, :] << 16) | (color[1, :, :] << 8) | (color[2, :, :])).view(torch.float32)
-        return res
-
-    def convert_obs_to_colors(self, risk_map):
-        """
-        Args:
-            risk_map (torch.tensor, shape:=(HxW), dtype= torch.float32): obs map with values 0, 0.5 and 1
-            0 -> Unkown, 0.5 -> Observed in Future, 1 -> Observed Current + Past
-        Returns:
-            torch.tensor, shape:=(HxW): color layer for gridmap
-        """
-
-        risk_map = risk_map.type(torch.float32)
-        risk_map = risk_map[None].repeat(3, 1, 1)
-        out_map = torch.zeros_like(risk_map)
-
-        # observed_color = torch.tensor([255.0 / 255, 255.0 / 255, 0.0 / 255])  # grey
-        # obs_fut_color = torch.tensor([255 / 255, 0.0 / 255, 0.0 / 255])  # orange
-        # unobs_color = torch.tensor([24.0 / 255, 24.0 / 255, 24.0 / 255])  # black
-
-        observed_color = torch.tensor([242.0 / 255, 239.0 / 255, 229.0 / 255])  # light grey
-        unobs_color = torch.tensor([255.0 / 255, 60.0 / 255, 255.0 / 255]) # torch.tensor([180 / 255, 180.0 / 255, 184.0 / 255])  # grey
-        obs_fut_color = torch.tensor([255 / 255, 255.0 / 255, 53.0 / 255]) # torch.tensor([199.0 / 255, 200.0 / 255, 204.0 / 255])  # dark grey
-
-        m = (risk_map < 0.1)[0]
-        if m.sum() != 0:
-            out_map[:, m] = unobs_color[:, None]
-
-        m = (risk_map > 0.9)[0]
-        if m.sum() != 0:
-            out_map[:, m] = observed_color[:, None]
-
-        m = (risk_map == 0.5)[0]
-        if m.sum() != 0:
-            out_map[:, m] = obs_fut_color[:, None]
-
-        return self.colortofloat(out_map)
-
-
-    # def get_gridmap_short_data(self, datum):
-    #     sk = datum["sequence_key"]
-
-    #     # h5py_grid_map_dem = self.h5py_file[sk]["g_elevation_map_micro_dem"]
-    #     # h5py_grid_map_gt = self.h5py_file[sk]["g_traversability_map_micro_gt"]
-    #     # h5py_grid_map = self.h5py_file[sk]["g_traversability_map_micro"]
-
-    #     # gm_idx_dem = datum["g_elevation_map_micro_dem"]
-    #     # gm_idx = datum["g_traversability_map_micro"]
-    #     # gm_idx_gt = datum["g_traversability_map_micro_gt"]
-
-    #     h5py_grid_map_dem = self.h5py_file[sk]["g_elevation_map_short_dem"]
-    #     h5py_grid_map_gt = self.h5py_file[sk]["g_traversability_map_short_gt"]
-    #     h5py_grid_map = self.h5py_file[sk]["g_traversability_map_short"]
-
-    #     gm_idx_dem = datum["g_elevation_map_short_dem"]
-    #     gm_idx = datum["g_traversability_map_short"]
-    #     gm_idx_gt = datum["g_traversability_map_short_gt"]
-
-    #     gm_layers = [g.decode("utf-8") for g in h5py_grid_map["layers"]]
-    #     gm_layers_dem = [g.decode("utf-8") for g in h5py_grid_map_dem["layers"]]
-    #     gm_layers_gt = [g.decode("utf-8") for g in h5py_grid_map_gt["layers"]]
-
-    #     confidence_gt_idx = gm_layers_gt.index("confidence")
-    #     elevation_idx = gm_layers.index("elevation")
-    #     confidence_idx = gm_layers.index("confidence")
-    #     elevation_dem_idx = gm_layers_dem.index("elevation_dem")
-
-    #     print(confidence_gt_idx, confidence_idx, elevation_dem_idx)
-
-    #     np_data = np.array(h5py_grid_map[f"data"][gm_idx])  # [gm_idx]{gm_idx}
-    #     grid_map_data = torch.from_numpy(
-    #         np.ascontiguousarray(np.ascontiguousarray(np_data))
-    #     )
-
-    #     np_data_dem = np.array(h5py_grid_map_dem[f"data"][gm_idx_dem])  # [gm_idx]{gm_idx}
-    #     grid_map_data_dem = torch.from_numpy(
-    #         np.ascontiguousarray(np.ascontiguousarray(np_data_dem))
-    #     )
-
-    #     np_data_gt = np.array(h5py_grid_map_gt[f"data"][gm_idx_gt])  # [gm_idx]{gm_idx}
-    #     grid_map_data_gt = torch.from_numpy(
-    #         np.ascontiguousarray(np.ascontiguousarray(np_data_gt))
-    #     )
-
-    #     print(grid_map_data_gt.shape)
-    #     obs_unobs_map = grid_map_data_gt[1]
-    #     m_obs = grid_map_data[confidence_idx] > 0.1
-    #     m_confidence =  grid_map_data_gt[confidence_gt_idx] > 0.1
-
-    #     obs_unobs_map[...] = 0.5
-    #     obs_unobs_map[~m_confidence] = 0
-    #     obs_unobs_map[m_obs] = 1
-
-    #     out_map_color = self.convert_obs_to_colors(obs_unobs_map)
-    #     grid_map_data[confidence_idx] = out_map_color
-    #     grid_map_data[elevation_idx] = grid_map_data_dem[elevation_dem_idx]
-
-    #     return (
-    #         np.array(grid_map_data),
-    #         np.array(h5py_grid_map["resolution"]),
-    #         gm_layers,
-    #     )
     
     def get_pointcloud_data(self, datum, H_sensor_gravity__map):
         sk = datum["sequence_key"]
@@ -709,6 +513,93 @@ class GTVisualization:
 
         return points_sensor_origin, ts
 
+    def get_raw_pcd_data(self, datum, H_sensor_gravity__map, return_n_pointclouds=1):
+        pcd_new = {}
+        pcd_new["points"] = []
+        dist_threshold = 2
+
+        idx_pointcloud = datum[self.pointcloud_key][-1]  # Most recent Cloud
+        sk = datum["sequence_key"]
+        h5py_pointcloud = self.h5py_file[sk][self.pointcloud_key]
+        H_map__base_link = get_H_h5py(
+            t=h5py_pointcloud[f"tf_translation"][idx_pointcloud],
+            q=h5py_pointcloud[f"tf_rotation_xyzw"][idx_pointcloud],
+        )
+        valid_point = np.array(h5py_pointcloud[f"valid"][idx_pointcloud]).sum()
+        x = h5py_pointcloud[f"x"][idx_pointcloud][:valid_point]
+        y = h5py_pointcloud[f"y"][idx_pointcloud][:valid_point]
+        z = h5py_pointcloud[f"z"][idx_pointcloud][:valid_point]
+        points = fn(np.stack([x, y, z, np.ones((x.shape[0],))], axis=1)).type(
+            torch.float32
+        )
+        H_sensor_gravity__base_link = H_sensor_gravity__map @ H_map__base_link
+        sensor_gravity_points = (H_sensor_gravity__base_link @ points.T).T
+        sensor_gravity_points = sensor_gravity_points[:, :3]
+
+        # # TODO: Option to concatenate intensity
+        # intensity = h5py_pointcloud[f"intensity"][idx_pointcloud][:valid_point]
+        # intensity = fn(intensity).type(torch.float32)
+        # sensor_gravity_points = torch.stack(
+        #     (sensor_gravity_points, intensity), dim=1
+        # )
+        ts_anchor = (
+            h5py_pointcloud[f"header_stamp_secs"][idx_pointcloud]
+            + h5py_pointcloud["header_stamp_nsecs"][idx_pointcloud] * 10**-9
+        )
+
+        pcd_new["points"].append(sensor_gravity_points)
+        prev_H = H_map__base_link  # Initialize with the current H matrix
+        n_clouds = 1
+        # print(f"New Sample")
+        # Take the most recent Pointclouds if they satisfy the distance threshold of 0.5 meters
+        for idx_pointcloud in datum[self.pointcloud_key][50:]:
+            # ts_curr = (
+            #     h5py_pointcloud[f"header_stamp_secs"][idx_pointcloud]
+            #     + h5py_pointcloud["header_stamp_nsecs"][idx_pointcloud] * 10**-9
+            # )
+            # print(ts_anchor - ts_curr)
+            if n_clouds >= return_n_pointclouds:
+                break
+
+            sk = datum["sequence_key"]
+            # h5py_pointcloud = self.h5py_handles[sk][sk][self.pointcloud_key]
+            H_map__base_link = get_H_h5py(
+                t=h5py_pointcloud[f"tf_translation"][idx_pointcloud],
+                q=h5py_pointcloud[f"tf_rotation_xyzw"][idx_pointcloud],
+            )
+            valid_point = np.array(h5py_pointcloud[f"valid"][idx_pointcloud]).sum()
+            x = h5py_pointcloud[f"x"][idx_pointcloud][:valid_point]
+            y = h5py_pointcloud[f"y"][idx_pointcloud][:valid_point]
+            z = h5py_pointcloud[f"z"][idx_pointcloud][:valid_point]
+            points = fn(np.stack([x, y, z, np.ones((x.shape[0],))], axis=1)).type(
+                torch.float32
+            )
+            H_sensor_gravity__base_link = H_sensor_gravity__map @ H_map__base_link
+            dist = torch.norm(prev_H[:3, 3] - H_map__base_link[:3, 3])
+            if dist > dist_threshold:
+                sensor_gravity_points = (H_sensor_gravity__base_link @ points.T).T
+                sensor_gravity_points = sensor_gravity_points[:, :3]
+                pcd_new["points"].append(sensor_gravity_points)
+
+                prev_H = H_map__base_link
+                n_clouds += 1
+
+        # Merge the clouds to a tensor and put them in a list to make compatible with varying concats
+        pcd_new["points"] = torch.cat(pcd_new["points"])
+        # with Timer("o3d voxel downsample"):
+        if True:
+            o3d_pc = o3d.geometry.PointCloud(
+                o3d.utility.Vector3dVector(np.array(pcd_new["points"]))
+            )
+            voxel_size = 0.5
+            downsampled_o3d_pc = o3d_pc.voxel_down_sample(voxel_size)
+            np_pc = np.asarray(downsampled_o3d_pc.points)
+            pcd_new["points"] = [torch.tensor(np_pc, dtype=torch.float32)]
+        else:
+            pcd_new["points"] = [pcd_new["points"]]
+
+        return np.array(pcd_new["points"][0]), ts_anchor
+    
     def get_gvomcloud_data(self, datum, H_sensor_gravity__map):
         sk = datum["sequence_key"]
         h5py_gvom = self.h5py_file[sk][self.gvom_key]
@@ -749,20 +640,19 @@ class GTVisualization:
             grid_layers,
             ts_gridmap,
         ) = self.get_gridmap_data(datum)
+        # pcd_data, ts_pcd = self.get_raw_pcd_data(datum, H_sensor_gravity_map, 1)
         pcd_data, ts_pcd = self.get_pointcloud_data(datum, H_sensor_gravity_map)
-        gvom_data, ts_gvom = self.get_gvomcloud_data(datum, H_sensor_gravity_map)
 
         (
             gridmap_short_data,
             grid_res_short,
             grid_layers_short,
-        ) = self.get_gridmap_short_data(datum, idx)
+        ) = self.get_gridmap_short_data(datum)
 
         for key in self.image_keys:
             self.vis.image(image_data[key], image_key=key, reference_frame=key)
 
         self.vis.pointcloud(pcd_data, reference_frame="sensor_gravity")
-        self.vis.gvomcloud(gvom_data, reference_frame="sensor_gravity")
 
         self.vis.gridmap_arr_sat(
             gridmap_short_data[:, 1:-1, 1:-1],
@@ -783,13 +673,10 @@ class GTVisualization:
         )
 
         print("")
-        print(f"left img ts diff {ts_imgs[0] - ts_imgs[1]}")
-        print(f"right img ts diff {ts_imgs[0] - ts_imgs[2]}")
-        print(f"back img ts diff {ts_imgs[0] - ts_imgs[3]}")
+        rospy.sleep(0.1)
         print(f"gridmap trav ts diff {ts_imgs[0] - ts_gridmap}")
         print(f"pointcloud ts diff {ts_imgs[0] - ts_pcd}")
-        print(f"GVOM cloud ts diff {ts_imgs[0] - ts_gvom}")
-        rospy.sleep(0.1)
+        
 
         return idx
 
@@ -800,16 +687,16 @@ def signal_handler(sig, frame):
 
 
 # Callback functions for keyboard events
-current_index = 100
+current_index = 0 # 167 # 1680
 
 
 def on_press(key):
     global current_index
     if key == keyboard.Key.right:
-        current_index = (current_index + 1) % visualizer.len()
+        current_index = (current_index + 5) % visualizer.len()
         print("Item: ", visualizer.get_item(current_index))
     elif key == keyboard.Key.left:
-        current_index = (current_index - 1) % visualizer.len()
+        current_index = (current_index - 5) % visualizer.len()
         print("Item: ", visualizer.get_item(current_index))
 
 

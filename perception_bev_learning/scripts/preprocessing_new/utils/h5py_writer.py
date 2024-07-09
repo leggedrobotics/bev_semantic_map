@@ -100,7 +100,11 @@ class DatasetWriter:
             if k in group.keys():
                 # Append to existing dataset
                 group[k].resize((group[k].shape[0] + 1), axis=0)
-                group[k][-1] = v
+                if group[k].shape[1] < v.shape[0]:
+                    group[k].resize((v.shape[0]), axis=1)
+
+                group[k][-1, : v.shape[0]] = v
+                # group[k][-1] = v
             else:
                 # Create new dataset entry
                 maxshape = (None,) + tuple(v.shape)

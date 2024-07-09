@@ -21,7 +21,7 @@ import pickle
 from utils.ignore_tf_warnings import suppress_TF_REPEATED_DATA
 import concurrent.futures
 
-suppress_TF_REPEATED_DATA()
+# suppress_TF_REPEATED_DATA()
 
 
 class BufferElement:
@@ -284,7 +284,7 @@ class BagToH5:
                     if str(self.topic_to_h5_keys[topic]) in stored_once_dict:
                         # Check if the data has already been stored
                         if not stored_once_dict[self.topic_to_h5_keys[topic]]:
-                            # print(f"Storing data for topic {topic}")
+                            print(f"Storing data for topic {topic}")
                             # Write the data to H5
                             if self.converters[
                                 self.topic_to_converter_keys[topic]
