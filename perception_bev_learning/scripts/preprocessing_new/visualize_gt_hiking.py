@@ -402,8 +402,8 @@ class GTVisualization:
         )
 
         H_map__sensor_origin_link = get_H_h5py(
-            t=h5py_anchor[f"tf_translation_map_o3d_localization_manager__base_inverted"][idx],
-            q=h5py_anchor[f"tf_rotation_xyzw_map_o3d_localization_manager__base_inverted"][idx],
+            t=h5py_anchor[f"tf_translation_map_o3d_localization_manager__base"][idx],
+            q=h5py_anchor[f"tf_rotation_xyzw_map_o3d_localization_manager__base"][idx],
         )
         H_sensor_origin_link__map = inv(H_map__sensor_origin_link)
         H_sensor_gravity__map = get_gravity_aligned(H_sensor_origin_link__map)
@@ -430,24 +430,24 @@ class GTVisualization:
             np.ascontiguousarray(np.ascontiguousarray(np_data))
         )
 
-        # grid_map_data[elevation_idxs] = (
-        #     grid_map_data[elevation_idxs] + H_sensor_gravity__grid_map_center[2, 3]
-        # )
+        grid_map_data[elevation_idxs] = (
+            grid_map_data[elevation_idxs] + H_sensor_gravity__grid_map_center[2, 3]
+        )
 
-        # grid_map_data_rotated = affine(
-        #         grid_map_data[None],
-        #         angle=-np.rad2deg(yaw),
-        #         translate=sh,
-        #         scale=1,
-        #         shear=0,
-        #         center=(H_c, W_c),
-        #         fill=torch.nan,
-        #     )[0]
+        grid_map_data_rotated = affine(
+                grid_map_data[None],
+                angle=-np.rad2deg(yaw),
+                translate=sh,
+                scale=1,
+                shear=0,
+                center=(H_c, W_c),
+                fill=torch.nan,
+            )[0]
 
         # grid_map_data_rotated = center_crop(
         #             grid_map_data_rotated, (512, 512)
         #         )
-        grid_map_data_rotated = grid_map_data
+        # grid_map_data_rotated = grid_map_data
         ts = (
             h5py_grid_map[f"header_stamp_secs"][gm_idx]
             + h5py_grid_map["header_stamp_nsecs"][gm_idx] * 10**-9
@@ -509,120 +509,6 @@ class GTVisualization:
         ts = (
             h5py_pointcloud[f"header_stamp_secs"][idx_pointcloud]
             + h5py_pointcloud["header_stamp_nsecs"][idx_pointcloud] * 10**-9
-        )
-
-        return points_sensor_origin, ts
-
-    def get_raw_pcd_data(self, datum, H_sensor_gravity__map, return_n_pointclouds=1):
-        pcd_new = {}
-        pcd_new["points"] = []
-        dist_threshold = 2
-
-        idx_pointcloud = datum[self.pointcloud_key][-1]  # Most recent Cloud
-        sk = datum["sequence_key"]
-        h5py_pointcloud = self.h5py_file[sk][self.pointcloud_key]
-        H_map__base_link = get_H_h5py(
-            t=h5py_pointcloud[f"tf_translation"][idx_pointcloud],
-            q=h5py_pointcloud[f"tf_rotation_xyzw"][idx_pointcloud],
-        )
-        valid_point = np.array(h5py_pointcloud[f"valid"][idx_pointcloud]).sum()
-        x = h5py_pointcloud[f"x"][idx_pointcloud][:valid_point]
-        y = h5py_pointcloud[f"y"][idx_pointcloud][:valid_point]
-        z = h5py_pointcloud[f"z"][idx_pointcloud][:valid_point]
-        points = fn(np.stack([x, y, z, np.ones((x.shape[0],))], axis=1)).type(
-            torch.float32
-        )
-        H_sensor_gravity__base_link = H_sensor_gravity__map @ H_map__base_link
-        sensor_gravity_points = (H_sensor_gravity__base_link @ points.T).T
-        sensor_gravity_points = sensor_gravity_points[:, :3]
-
-        # # TODO: Option to concatenate intensity
-        # intensity = h5py_pointcloud[f"intensity"][idx_pointcloud][:valid_point]
-        # intensity = fn(intensity).type(torch.float32)
-        # sensor_gravity_points = torch.stack(
-        #     (sensor_gravity_points, intensity), dim=1
-        # )
-        ts_anchor = (
-            h5py_pointcloud[f"header_stamp_secs"][idx_pointcloud]
-            + h5py_pointcloud["header_stamp_nsecs"][idx_pointcloud] * 10**-9
-        )
-
-        pcd_new["points"].append(sensor_gravity_points)
-        prev_H = H_map__base_link  # Initialize with the current H matrix
-        n_clouds = 1
-        # print(f"New Sample")
-        # Take the most recent Pointclouds if they satisfy the distance threshold of 0.5 meters
-        for idx_pointcloud in datum[self.pointcloud_key][50:]:
-            # ts_curr = (
-            #     h5py_pointcloud[f"header_stamp_secs"][idx_pointcloud]
-            #     + h5py_pointcloud["header_stamp_nsecs"][idx_pointcloud] * 10**-9
-            # )
-            # print(ts_anchor - ts_curr)
-            if n_clouds >= return_n_pointclouds:
-                break
-
-            sk = datum["sequence_key"]
-            # h5py_pointcloud = self.h5py_handles[sk][sk][self.pointcloud_key]
-            H_map__base_link = get_H_h5py(
-                t=h5py_pointcloud[f"tf_translation"][idx_pointcloud],
-                q=h5py_pointcloud[f"tf_rotation_xyzw"][idx_pointcloud],
-            )
-            valid_point = np.array(h5py_pointcloud[f"valid"][idx_pointcloud]).sum()
-            x = h5py_pointcloud[f"x"][idx_pointcloud][:valid_point]
-            y = h5py_pointcloud[f"y"][idx_pointcloud][:valid_point]
-            z = h5py_pointcloud[f"z"][idx_pointcloud][:valid_point]
-            points = fn(np.stack([x, y, z, np.ones((x.shape[0],))], axis=1)).type(
-                torch.float32
-            )
-            H_sensor_gravity__base_link = H_sensor_gravity__map @ H_map__base_link
-            dist = torch.norm(prev_H[:3, 3] - H_map__base_link[:3, 3])
-            if dist > dist_threshold:
-                sensor_gravity_points = (H_sensor_gravity__base_link @ points.T).T
-                sensor_gravity_points = sensor_gravity_points[:, :3]
-                pcd_new["points"].append(sensor_gravity_points)
-
-                prev_H = H_map__base_link
-                n_clouds += 1
-
-        # Merge the clouds to a tensor and put them in a list to make compatible with varying concats
-        pcd_new["points"] = torch.cat(pcd_new["points"])
-        # with Timer("o3d voxel downsample"):
-        if True:
-            o3d_pc = o3d.geometry.PointCloud(
-                o3d.utility.Vector3dVector(np.array(pcd_new["points"]))
-            )
-            voxel_size = 0.5
-            downsampled_o3d_pc = o3d_pc.voxel_down_sample(voxel_size)
-            np_pc = np.asarray(downsampled_o3d_pc.points)
-            pcd_new["points"] = [torch.tensor(np_pc, dtype=torch.float32)]
-        else:
-            pcd_new["points"] = [pcd_new["points"]]
-
-        return np.array(pcd_new["points"][0]), ts_anchor
-    
-    def get_gvomcloud_data(self, datum, H_sensor_gravity__map):
-        sk = datum["sequence_key"]
-        h5py_gvom = self.h5py_file[sk][self.gvom_key]
-        idx_pointcloud = datum[self.gvom_key]
-
-        H_map__base_link = get_H_h5py(
-            t=h5py_gvom[f"tf_translation"][idx_pointcloud],  # {idx_pointcloud}
-            q=h5py_gvom[f"tf_rotation_xyzw"][idx_pointcloud],
-        )
-
-        valid_point = np.array(h5py_gvom[f"valid"][idx_pointcloud]).sum()
-        x = h5py_gvom[f"x"][idx_pointcloud][:valid_point]
-        y = h5py_gvom[f"y"][idx_pointcloud][:valid_point]
-        z = h5py_gvom[f"z"][idx_pointcloud][:valid_point]
-        points = np.stack([x, y, z, np.ones((x.shape[0],))], axis=1)
-
-        H_sensor_gravity__base_link = H_sensor_gravity__map @ H_map__base_link
-        points_sensor_origin = (H_sensor_gravity__base_link.numpy() @ points.T).T
-
-        points_sensor_origin = points_sensor_origin[:, :3]
-        ts = (
-            h5py_gvom[f"header_stamp_secs"][idx_pointcloud]
-            + h5py_gvom["header_stamp_nsecs"][idx_pointcloud] * 10**-9
         )
 
         return points_sensor_origin, ts
