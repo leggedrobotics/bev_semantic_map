@@ -32,6 +32,11 @@ import ros_numpy
 from sensor_msgs.msg import Image
 from scipy.spatial.transform import Rotation
 import open3d as o3d
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from nav_msgs.msg import OccupancyGrid
+from scipy.ndimage import binary_dilation
+
 
 """
 Publish GridMap
@@ -63,6 +68,7 @@ class SimpleNumpyToRviz:
         )
         self.pub_gridmap = rospy.Publisher(f"~gridmap{postfix}", GridMap, queue_size=1)
         self.pub_gridmap_sat = rospy.Publisher(f"~gridmap_sat", GridMap, queue_size=1)
+        self.pub_gps_path_map = rospy.Publisher("~gps_path_map", OccupancyGrid, queue_size=1)
         self.pub_images = {}
         for i in image_keys:
             self.pub_images[i] = rospy.Publisher(
@@ -225,6 +231,45 @@ class SimpleNumpyToRviz:
         if publish:
             self.pub_gridmap.publish(gm_msg)
         return gm_msg
+    
+    def gps_path_arr(
+        self, arr, res, layers, reference_frame="sensor_gravity", publish=True, x=0, y=0
+    ):
+        size_x = arr.shape[1]
+        size_y = arr.shape[2]
+
+        data_dim_0 = MultiArrayDimension()
+        data_dim_0.label = "column_index"  # y dimension
+        data_dim_0.size = size_y  # number of columns which is y
+        data_dim_0.stride = size_y * size_x  # rows*cols
+        data_dim_1 = MultiArrayDimension()
+        data_dim_1.label = "row_index"  # x dimension
+        data_dim_1.size = size_x  # number of rows which is x
+        data_dim_1.stride = size_x  # number of rows
+        data = []
+
+        for i in range(arr.shape[0]):
+            data_tmp = Float32MultiArray()
+            data_tmp.layout.dim.append(data_dim_0)
+            data_tmp.layout.dim.append(data_dim_1)
+            data_tmp.data = arr[i, ::-1, ::-1].transpose().ravel()
+            data.append(data_tmp)
+
+        info = GridMapInfo()
+        info.pose.orientation.w = 1
+        info.header.seq = 0
+        info.header.stamp = rospy.Time.now()
+        info.resolution = res
+        info.length_x = size_x * res
+        info.length_y = size_y * res
+        info.header.frame_id = reference_frame
+        info.pose.position.x = x
+        info.pose.position.y = y
+
+        gm_msg = GridMap(info=info, layers=layers, basic_layers=[], data=data)
+        if publish:
+            self.pub_gridmap.publish(gm_msg)
+        return gm_msg
 
     def gridmap_arr_sat(
         self, arr, res, layers, reference_frame="sensor_gravity", publish=True, x=0, y=0
@@ -330,6 +375,7 @@ class GTVisualization:
         # self.gridmap_key = "g_traversability_map_micro"
         self.gridmap_key = "traversability_map_micro"
         self.gridmap_short_key = "traversability_map_short"
+        self.gps_path_key = "lodia_path"
         self.anchor_key = "hdr_front"
         self.elevation_layers = ["elevation"]
         self.pointcloud_key = "velodyne_merged_points"
@@ -463,6 +509,41 @@ class GTVisualization:
             ts,
         )
 
+    def get_gps_path_data(self, datum, H_sensor_gravity__map):
+        sk = datum["sequence_key"]
+
+        h5py_gps_path = self.h5py_file[sk][self.gps_path_key]
+        gps_path_idx = datum[self.gps_path_key]
+
+        # print(h5py_gps_path["path"][gps_path_idx])
+
+        # print(h5py_gps_path["path"])
+
+        # print(h5py_gps_path["header_frame_id"])
+
+        H_map__base_link = get_H_h5py(
+            t=h5py_gps_path[f"tf_translation"][gps_path_idx],  # {idx_pointcloud}
+            q=h5py_gps_path[f"tf_rotation_xyzw"][gps_path_idx],
+        )
+
+        # valid_point = np.array(h5py_pointcloud[f"valid"][idx_pointcloud]).sum()
+        x = h5py_gps_path["path"][gps_path_idx][:, 0]
+        y = h5py_gps_path["path"][gps_path_idx][:, 1]
+        z = h5py_gps_path["path"][gps_path_idx][:, 2]
+        points = np.stack([x, y, z, np.ones((x.shape[0],))], axis=1)
+
+        H_sensor_gravity__base_link = H_sensor_gravity__map @ H_map__base_link
+        points_sensor_origin = (H_sensor_gravity__base_link.numpy() @ points.T).T
+        points_sensor_origin = points_sensor_origin[:, :3]
+
+        ts = (
+            h5py_gps_path[f"header_stamp_secs"][gps_path_idx]
+            + h5py_gps_path["header_stamp_nsecs"][gps_path_idx] * 10**-9
+        )
+
+        return points[:, :3], points_sensor_origin, ts
+
+
     def get_gridmap_short_data(self, datum):
         sk = datum["sequence_key"]
         h5py_grid_map = self.h5py_file[sk][self.gridmap_short_key]
@@ -513,9 +594,150 @@ class GTVisualization:
 
         return points_sensor_origin, ts
 
+    def occupancy_map_arr(self, arr, res, reference_frame="sensor_gravity", x=0, y=0, crop_size=(8, 8)):
+        size_x, size_y = arr.shape
+
+        # Convert crop size from meters to number of cells
+        crop_x = int(crop_size[0] / res)
+        crop_y = int(crop_size[1] / res)
+
+        # Calculate the center of the array
+        center_x, center_y = size_x // 2, size_y // 2
+
+        # Calculate the crop boundaries
+        start_x = max(center_x - crop_x // 2, 0)
+        end_x = min(center_x + crop_x // 2, size_x)
+        start_y = max(center_y - crop_y // 2, 0)
+        end_y = min(center_y + crop_y // 2, size_y)
+
+        # Crop the array
+        cropped_arr = arr[start_x:end_x, start_y:end_y]
+
+        # Update size_x and size_y to the cropped array size
+        size_x, size_y = cropped_arr.shape
+
+        center_offset_x = (size_x * res) / 2
+        center_offset_y = (size_y * res) / 2
+
+        occupancy_grid = OccupancyGrid()
+        occupancy_grid.header.seq = 0
+        occupancy_grid.header.stamp = rospy.Time.now()
+        occupancy_grid.header.frame_id = reference_frame
+        occupancy_grid.info.resolution = res
+        occupancy_grid.info.width = size_x
+        occupancy_grid.info.height = size_y
+        occupancy_grid.info.origin.position.x = x - center_offset_x  # Adjusted x origin
+        occupancy_grid.info.origin.position.y = y - center_offset_y  # Adjusted y origin
+        occupancy_grid.data = (cropped_arr * 100).astype(np.int8).ravel()  # Scale values to 0-100 and flatten
+
+        return occupancy_grid
+
+    def visualize_pointcloud_2d(self, points):
+        x = points[:, 0]
+        y = points[:, 1]
+
+        plt.figure(figsize=(10, 10))
+        plt.scatter(x, y, s=1)
+        plt.plot(x, y, color='blue', linewidth=0.5)  # Add interpolation lines
+        plt.xlabel('X axis')
+        plt.ylabel('Y axis')
+        plt.title('2D Top-Down View of Point Cloud')
+        plt.axhline(0, color='grey', lw=0.5)
+        plt.axvline(0, color='grey', lw=0.5)
+        plt.grid(True)
+        plt.show()
+    
+    def visualize_path_3d(self, points):
+        x = points[:, 0]
+        y = points[:, 1]
+        z = points[:, 2]
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(x, y, z, marker='o')
+
+        ax.set_xlabel('X axis')
+        ax.set_ylabel('Y axis')
+        ax.set_zlabel('Z axis')
+        ax.set_title('3D Path Visualization')
+
+        plt.show()
+
+    def create_occupancy_map(self, points, res=0.1, grid_size=(10000, 10000)):
+        x = points[:, 0]
+        y = points[:, 1]
+
+        # Scale points to grid resolution
+        x = (x / res).astype(int)
+        y = (y / res).astype(int)
+
+        # Translate points to center them in the grid
+        center_x, center_y = grid_size[0] // 2, grid_size[1] // 2
+        x = x + center_x
+        y = y + center_y
+
+        # Create an empty grid
+        occupancy_grid = np.zeros(grid_size, dtype=np.int8)
+
+        # Draw lines between points
+        for i in range(len(x) - 1):
+            rr, cc = self.bresenham_line(x[i], y[i], x[i + 1], y[i + 1])
+            occupancy_grid[rr, cc] = 1
+
+        # Dilate the lines to make them thicker
+        occupancy_grid = binary_dilation(occupancy_grid, iterations=1).astype(np.int8)
+
+        return occupancy_grid
+
+    def bresenham_line(self, x0, y0, x1, y1):
+        """Bresenham's Line Algorithm to get the points between two coordinates."""
+        points = []
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx - dy
+
+        while True:
+            points.append((x0, y0))
+            if x0 == x1 and y0 == y1:
+                break
+            e2 = err * 2
+            if e2 > -dy:
+                err -= dy
+                x0 += sx
+            if e2 < dx:
+                err += dx
+                y0 += sy
+
+        points = np.array(points)
+        return points[:, 1], points[:, 0]  # Return as row, col
+
+    def visualize_occupancy_map(self, occupancy_map, res=0.1):
+        size_x, size_y = occupancy_map.shape
+        center_x, center_y = size_x // 2, size_y // 2
+
+        # Calculate the extent of the cropped area
+        crop_size = int(8 / res)  # 8 meters divided by resolution
+        start_x = max(center_x - crop_size // 2, 0)
+        end_x = min(center_x + crop_size // 2, size_x)
+        start_y = max(center_y - crop_size // 2, 0)
+        end_y = min(center_y + crop_size // 2, size_y)
+
+        cropped_map = occupancy_map[start_x:end_x, start_y:end_y]
+
+        plt.figure(figsize=(10, 10))
+        plt.imshow(cropped_map, cmap='gray', origin='lower', extent=(-4, 4, -4, 4))
+        plt.title('Occupancy Map')
+        plt.xlabel('X axis')
+        plt.ylabel('Y axis')
+        plt.grid(True)
+        plt.show()
+
     def get_item(self, idx):
         datum = self.dataset_config[idx]
 
+        # Fetch data
         image_data, ts_imgs = self.get_images(datum)
         (
             gridmap_data,
@@ -535,6 +757,25 @@ class GTVisualization:
             grid_layers_short,
         ) = self.get_gridmap_short_data(datum)
 
+        (   
+            pcd_data_orig,
+            pcd_data,
+            ts_pcd
+        ) = self.get_gps_path_data(datum, H_sensor_gravity_map)
+
+        # To visualize path in 2d and 3d for debugging
+        # self.visualize_pointcloud_2d(np.array(pcd_data))
+        # self.visualize_path_3d(np.array(pcd_data_orig))
+
+        # Create and visualize occupancy map
+        occupancy_map = self.create_occupancy_map(np.array(pcd_data))
+        # To visualize path as matplot plot for debugging
+        # self.visualize_occupancy_map(occupancy_map)
+        occupancy_grid = self.occupancy_map_arr(occupancy_map, res=0.1)
+
+        self.vis.pub_gps_path_map.publish(occupancy_grid)
+
+        # Visualize data
         for key in self.image_keys:
             self.vis.image(image_data[key], image_key=key, reference_frame=key)
 
@@ -562,10 +803,8 @@ class GTVisualization:
         rospy.sleep(0.1)
         print(f"gridmap trav ts diff {ts_imgs[0] - ts_gridmap}")
         print(f"pointcloud ts diff {ts_imgs[0] - ts_pcd}")
-        
 
         return idx
-
 
 def signal_handler(sig, frame):
     rospy.signal_shutdown("Ctrl+C detected")
