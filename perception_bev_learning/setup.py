@@ -105,7 +105,7 @@ if __name__ == "__main__":
                     "src/maxpool.cc",
                     "src/maxpool_cuda.cu",
                 ],
-                extra_args=["-w", "-std=c++14"],
+                extra_args=["-w", "-std=c++17"],
             ),
             make_cuda_ext(
                 name="bev_pool_ext",

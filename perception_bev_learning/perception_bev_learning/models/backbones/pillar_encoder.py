@@ -174,6 +174,7 @@ class PillarFeatureNet(nn.Module):
         mask = torch.unsqueeze(mask, -1).type_as(features)
         features *= mask
 
+        features = torch.nan_to_num(features, nan=0.0) # TODO: Check why this is needed (Earlier was not needed)
         # Forward pass through PFNLayers
         for pfn in self.pfn_layers:
             features = pfn(features)

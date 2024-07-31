@@ -46,6 +46,17 @@ def elevation_fused_l1_residual(pred, target, aux, aux_dict):
 
     return res
 
+def elevation_l1(pred, target, aux, aux_dict):
+    """
+    pred (torch.Tensor shape:=(BS,1,H,W)): Prediction
+    target (torch.Tensor shape:=(BS,1,H,W)): Target
+    aux (torch.Tensor shape:=(BS,N,H,W)): Aux layers
+    aux_dict (dict): Dictionary containing the keys as layer names and values as indices for aux
+    """
+
+    m = ~(torch.isnan(target)) * ~(torch.isnan(pred))
+    loss = F.smooth_l1_loss(pred[m], target[m], reduction="none") 
+    return loss.mean()
 
 def elevation_fused_l1(pred, target, aux, aux_dict):
     """
@@ -191,21 +202,20 @@ def wheel_risk_mse(pred, target, aux, aux_dict):
     return res.mean()
 
 
-def wheel_risk_bce(pred, target, aux, aux_dict):
+def traversability_bce(pred, target, aux, aux_dict):
     """
     pred (torch.Tensor shape:=(BS,1,H,W)): Prediction
     target (torch.Tensor shape:=(BS,1,H,W)): Target
     aux (torch.Tensor shape:=(BS,N,H,W)): Aux layers
     aux_dict (dict): Dictionary containing the keys as layer names and values as indices for aux
     """
-    lethal_threshold = 0.5
-    m_valid = ~(torch.isnan(target)) * ~(torch.isnan(pred))
-    m_conf = aux[:, aux_dict["confidence_gt"]][:, None] > 0.5
-    m = m_conf * m_valid
+    threshold = 0.5
+    m = ~(torch.isnan(target)) * ~(torch.isnan(pred))
+    target = target[m]
+    pred = pred[m]
 
-    target = torch.where(target > lethal_threshold, 1, 0).float()
-
-    res = F.binary_cross_entropy(pred[m], target[m], reduction="none")
+    target = torch.where(target > threshold, 1, 0).float()
+    res = F.binary_cross_entropy(pred, target, reduction="none")
 
     return res.mean()
 

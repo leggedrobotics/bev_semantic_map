@@ -1,0 +1,22 @@
+h5_files: "/home/patelm/Data/nature_hiking/2024-06-06-hoengg/dodo_mission_2024_06_06/run2_bev/h5_rot" # The directory consisting of h5py files or the path to a single h5py file
+# config_file: "/data_ssd/manthan/bev_traversability/halter_ranch/h5_gt/dataset_config.pkl" # Path to .pkl config file (Should contain info for all H5py files if there are multiple)
+HW_ext: [276, 276] # Size of the all Gridmaps
+visualize: False
+write: True
+
+anchor_key: hdr_front
+input_layer_keys: ["traversability_map_short_gt"]
+output_layer_keys: ["g_traversability_map_short_gt"] # Cannot be same as input
+gps_o_key: gps_orientation
+gps_p_key: gps_pose
+elevation_layers: ["elevation"]
+pointcloud_key: "current_temporal_merged_points"
+connected_component_threshold: 0.5 # In meters, the acceptable value for connected neighbors
+
+icp_config:
+  trav_layer: navigation_traversability
+  trav_threshold: 0.2
+  voxel_size_pcl: 0.05
+  voxel_size_gridmap: 0.2
+  voxel_size_icp: 0.1
+  fitness: 0.3

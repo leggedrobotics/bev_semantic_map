@@ -5,6 +5,5 @@ from .bev_trav_net_temporal_pred import *
 from .bev_trav_net_depth import *
 from .bev_trav_net_temporal_test_elevation import *
 from .bev_trav_net_temporal_truncated import *
-from .bev_trav_net_minz import *
 from .bev_trav_net_multi import *
 from .bev_trav_net_multi_temporal import *

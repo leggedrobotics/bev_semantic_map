@@ -54,7 +54,8 @@ from .metrics import (
 )
 from .bev_meter import BevMeter
 from .bev_meter_multi import BevMeterMulti
-from .bev_meter_multi_norange import BevMeterMultiR
+from .bev_meter_multi_anymal import BevMeterMultiAnymal
+
 from .h5py_tools import DatasetWriter
 from .project_points_onto_image import simple_visu
 from .normal_filter import normal_filter_torch

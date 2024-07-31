@@ -1,0 +1,24 @@
+process_multiple: False # (TODO) For parallel processing 
+h5_files: "/home/patelm/Data/nature_hiking/2024-06-25-seealpsee/h5_1_reind_gt_nan" # The directory consisting of h5py files or the path to a single h5py file
+override: True
+visualize: False
+write: True
+
+dataset:
+  # Here specify the key for the GT Fusion Maps along with the layers and the operations
+  trav_map_short:
+    HW_ext: [375, 375] # Size of the GT Gridmap (We use something close to _/2)
+    obs_name: traversability_map_short
+    gt_obs_name: traversability_map_short_gt
+    max_acc_time: 300 # In seconds
+    risk_layer: [preferred_area, navigation_traversability]
+    fusions:
+      elevation:
+        _target_: fusers.fusion.mean
+      preferred_area:
+        _target_: fusers.fusion.maximum
+      navigation_traversability:
+        _target_: fusers.fusion.maximum
+    
+    update_with_micro_range: True
+    micro_obs_name: traversability_map_micro # Assumption that the layers of both ranges are the same

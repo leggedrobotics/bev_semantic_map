@@ -20,6 +20,8 @@ from pytictac import Timer
 from torch.nn import functional as F
 from torchvision.transforms.functional import center_crop
 import seaborn as sns
+import matplotlib
+matplotlib.use('TkAgg')  # or 'Qt5Agg', or whichever GUI backend is available on your system
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
@@ -208,7 +210,6 @@ class BevTravNetMulti(nn.Module):
         # with Timer("voxelization"):
         feats, coords, sizes = self.voxelize(x["points"], x["batch"], sensor)
         batch_size = coords[-1, 0] + 1
-        # print(x["points"].shape)
         min_z_feat = None
         with torch.no_grad():
             if self.use_minz[sensor]:
@@ -230,6 +231,11 @@ class BevTravNetMulti(nn.Module):
                 # min_z_feat_binary[min_z_feat_binary!=0] = 1
 
                 # min_z_feat = torch.cat([min_z_feat, min_z_feat_binary], dim = 1)
+
+        # # Plot min_z_feat
+        # plt.imshow(min_z_feat[0, 0].cpu().numpy(), cmap='viridis')
+        # plt.colorbar()
+        # plt.savefig('/home/patelm/Data/results/output.png')
         # with Timer("PointPillar"):
         x = self.encoders[sensor]["backbone"](feats, coords, batch_size, sizes=sizes)
 

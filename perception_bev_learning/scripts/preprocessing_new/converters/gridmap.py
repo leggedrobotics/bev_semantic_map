@@ -58,7 +58,7 @@ class GridMapConverter(Converter):
         return "GridMap"
 
     def write_to_h5(
-        self, msg: Any, dataset_writer, seq_name: str, dataset_key: str, tf_listener
+        self, msg: Any, dataset_writer, seq_name: str, dataset_key: str, tf_listener, *args, **kwargs
     ) -> bool:
         fieldname = dataset_key
         res_dict = convert_gridmap_float32(msg, extract_layers=self.layers)

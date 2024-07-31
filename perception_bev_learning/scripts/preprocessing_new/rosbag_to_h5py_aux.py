@@ -216,6 +216,14 @@ class BagToH5:
             if (not x.store_once and str(x.obs_name) != self.anchor_h5_key)
         }
 
+        # Create the dictionary of auxilliary msg buffers
+        # For these we can have distance threshold for adding to the aux buffer
+        aux_buffer_dict = {
+                x.obs_name: deque(maxlen=x.buffer_size)
+                for x in self.converters.values()
+                if (x.merge_N_temporal != 0)
+            }
+
         # Create dictionary for all store_once topics (Like camera info)
         stored_once_dict = {
             x.obs_name: False for x in self.converters.values() if x.store_once
@@ -546,6 +554,37 @@ class BagToH5:
                         h5_key = self.topic_to_h5_keys[topic]
                         # print(f"Adding to buffer {topic} : {t}")
                         buffer_dict[h5_key].append(BufferElement(msg, t, None))
+
+                        # Handle the Auxilliary buffer
+                        if self.topic_to_h5_keys[topic] in aux_buffer_dict.keys():
+                            prev_buf_ele = aux_buffer_dict[h5_key][-1]
+                            # Need to find the distance of the current message from the previous message
+                            try:
+                                # TODO: We need to query the translation from the TF listener
+                                tar_frame = prev_buf_ele.msg.header.frame_id
+                                prev_tf_dict_ref_header, suc1 = get_tf_and_header_dict(
+                                    self.tf_listener,
+                                    prev_buf_ele.msg.header,
+                                    ref_frame=self.ref_frame,
+                                    tar_frame=tar_frame,
+                                )
+                                curr_tf_dict_ref_header, suc2 = get_tf_and_header_dict(
+                                    self.tf_listener,
+                                    msg.header,
+                                    ref_frame=self.ref_frame,
+                                    tar_frame=tar_frame,
+                                )
+
+                                if suc1 and suc2:
+                                    # Compute the rotation and translation between the previous and current frames
+                                    prev_rot = prev_tf_dict_ref_header["tf_rotation"]
+                                    prev_trans = prev_tf_dict_ref_header["tf_translation"]
+                                    curr_rot = curr_tf_dict_ref_header["tf_rotation"]
+                                    curr_trans = curr_tf_dict_ref_header["tf_translation"]
+                                    trans_diff = curr_trans - prev_trans
+                                    if (np.linalg.norm(trans_diff) > self.h5_to_converter_keys[h5_key].merge_trans_threshold):
+                                        aux_buffer_dict[h5_key].append(BufferElement(msg, t, None))
+
                         # Check if the type is always store
                         if h5_key in store_always_dict:
                             suc = self.converters[

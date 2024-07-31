@@ -10,7 +10,7 @@ import subprocess
 import warnings
 import gpxpy
 from perception_bev_learning.preprocessing import BagTfTransformerWrapper, get_bag_info
-from perception_bev_learning.utils import load_env, load_pkl
+# from perception_bev_learning.utils import load_env, load_pkl
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -22,13 +22,13 @@ if __name__ == "__main__":
         help="Gps bag",
     )
     args = parser.parse_args()
-    valid_topics = "/crl_rzr/duro/piksi/pos_llh_cov"
+    valid_topics = "/rtk_gps_driver/position_receiver_0/ros/navsatfix"
 
     from pathlib import Path
 
-    bag_paths = [str(s) for s in Path(args.directory).rglob("*rzr_gps*")]
+    bag_paths = [str(s) for s in Path(args.directory).rglob("*npc*")]
 
-    env = load_env()
+    # env = load_env()
     # dataset_config = load_pkl(os.path.join(env["dataset_root_dir"], "dataset_config_subsample_20.pkl"))
     # for mode in ["train", "val", "test"]:
     #     print(mode)
@@ -98,6 +98,6 @@ if __name__ == "__main__":
         #     f.write(gpx.to_xml())
 
         with open(
-            f"/home/jonfrey/Downloads/gps/{bag_path.split('/')[-1]}.gpx", "w"
+            f"/home/patelm/Data/nature_hiking/ARCHE-experiments/long_navigation_gpt/{bag_path.split('/')[-1]}.gpx", "w"
         ) as f:
             f.write(gpx.to_xml())

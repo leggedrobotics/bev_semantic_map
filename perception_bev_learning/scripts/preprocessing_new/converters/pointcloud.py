@@ -33,7 +33,7 @@ class PointCloudConverter(Converter):
         return PointCloud2
 
     def write_to_h5(
-        self, msg: Any, dataset_writer, seq_name: str, dataset_key: str, tf_listener
+        self, msg: Any, dataset_writer, seq_name: str, dataset_key: str, tf_listener, *args, **kwargs
     ) -> bool:
         
         fieldname = dataset_key

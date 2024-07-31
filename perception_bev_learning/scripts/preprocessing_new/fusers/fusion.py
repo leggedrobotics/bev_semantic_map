@@ -7,7 +7,10 @@ class mean:
 
     def fuse(self, measurement, map1, map2, *args, **kwargs):
         m = ~np.isnan(measurement)
-        map1[m] += measurement[m]
+        m_invalid = np.isnan(map1)
+
+        map1[m_invalid * m] = measurement[m_invalid * m]
+        map1[~m_invalid * m] += measurement[~m_invalid * m]
         map2[m] += 1
         return map1, map2
 
@@ -84,7 +87,7 @@ class minimum:
     def __init__(self) -> None:
         pass
 
-    def fuse(measurement, map1, map2, *args, **kwargs):
+    def fuse(self, measurement, map1, map2, *args, **kwargs):
         meas_valid = ~np.isnan(measurement)
 
         map_invalid = np.isnan(map1)
@@ -98,7 +101,7 @@ class minimum:
         map1[m_both_valid * m_measurement_smaller] = measurement[
             m_both_valid * m_measurement_smaller
         ]
-        map2[:, :] = 1
+        map2[~np.isnan(map1)] = 1
         return map1, map2
 
 

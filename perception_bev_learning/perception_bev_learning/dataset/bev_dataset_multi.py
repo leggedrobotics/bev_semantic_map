@@ -184,9 +184,9 @@ class BevDatasetMulti(torch.utils.data.Dataset):
                 .type(torch.float32)
             )
 
-            # # TODO something went wrong with some Camp Roberts DS so correcting here
-            if intrin[0, 2] == 640:
-                intrin[:2, :] *= 0.5
+            # # # TODO something went wrong with some Camp Roberts DS so correcting here
+            # if intrin[0, 2] == 640:
+            #     intrin[:2, :] *= 0.5
 
             # Placeholder for the real image
             # TODO remove img_plot
@@ -238,8 +238,11 @@ class BevDatasetMulti(torch.utils.data.Dataset):
         pcd_new = {}
         pcd_new["points"] = []
         dist_threshold = self.cfg.pointcloud_merge_threshold
+        try:
+            idx_pointcloud = datum[self.pointcloud_key][-1]  # Most recent Cloud
+        except:
+            idx_pointcloud = datum[self.pointcloud_key]
 
-        idx_pointcloud = datum[self.pointcloud_key][-1]  # Most recent Cloud
         sk = datum["sequence_key"]
         h5py_pointcloud = self.h5py_handles[sk][sk][self.pointcloud_key]
         H_map__base_link = get_H_h5py(
@@ -257,67 +260,7 @@ class BevDatasetMulti(torch.utils.data.Dataset):
         sensor_gravity_points = (H_sensor_gravity__base_link @ points.T).T
         sensor_gravity_points = sensor_gravity_points[:, :3]
 
-        # # TODO: Option to concatenate intensity
-        # intensity = h5py_pointcloud[f"intensity"][idx_pointcloud][:valid_point]
-        # intensity = fn(intensity).type(torch.float32)
-        # sensor_gravity_points = torch.stack(
-        #     (sensor_gravity_points, intensity), dim=1
-        # )
-        ts_anchor = (
-            h5py_pointcloud[f"header_stamp_secs"][idx_pointcloud]
-            + h5py_pointcloud["header_stamp_nsecs"][idx_pointcloud] * 10**-9
-        )
-
         pcd_new["points"].append(sensor_gravity_points)
-        prev_H = H_map__base_link  # Initialize with the current H matrix
-        n_clouds = 1
-        # print(f"New Sample")
-        # Take the most recent Pointclouds if they satisfy the distance threshold of 0.5 meters
-        for idx_pointcloud in datum[self.pointcloud_key][50:]:
-            # ts_curr = (
-            #     h5py_pointcloud[f"header_stamp_secs"][idx_pointcloud]
-            #     + h5py_pointcloud["header_stamp_nsecs"][idx_pointcloud] * 10**-9
-            # )
-            # print(ts_anchor - ts_curr)
-            if n_clouds >= self.cfg.return_n_pointclouds:
-                break
-
-            sk = datum["sequence_key"]
-            h5py_pointcloud = self.h5py_handles[sk][sk][self.pointcloud_key]
-            H_map__base_link = get_H_h5py(
-                t=h5py_pointcloud[f"tf_translation"][idx_pointcloud],
-                q=h5py_pointcloud[f"tf_rotation_xyzw"][idx_pointcloud],
-            )
-            valid_point = np.array(h5py_pointcloud[f"valid"][idx_pointcloud]).sum()
-            x = h5py_pointcloud[f"x"][idx_pointcloud][:valid_point]
-            y = h5py_pointcloud[f"y"][idx_pointcloud][:valid_point]
-            z = h5py_pointcloud[f"z"][idx_pointcloud][:valid_point]
-            points = fn(np.stack([x, y, z, np.ones((x.shape[0],))], axis=1)).type(
-                torch.float32
-            )
-            H_sensor_gravity__base_link = H_sensor_gravity__map @ H_map__base_link
-            dist = torch.norm(prev_H[:3, 3] - H_map__base_link[:3, 3])
-            if dist > dist_threshold:
-                sensor_gravity_points = (H_sensor_gravity__base_link @ points.T).T
-                sensor_gravity_points = sensor_gravity_points[:, :3]
-                pcd_new["points"].append(sensor_gravity_points)
-
-                prev_H = H_map__base_link
-                n_clouds += 1
-
-        # Merge the clouds to a tensor and put them in a list to make compatible with varying concats
-        pcd_new["points"] = torch.cat(pcd_new["points"])
-        # with Timer("o3d voxel downsample"):
-        if self.cfg.voxel_downsample:
-            o3d_pc = o3d.geometry.PointCloud(
-                o3d.utility.Vector3dVector(np.array(pcd_new["points"]))
-            )
-            voxel_size = self.cfg.voxel_downsample_size
-            downsampled_o3d_pc = o3d_pc.voxel_down_sample(voxel_size)
-            np_pc = np.asarray(downsampled_o3d_pc.points)
-            pcd_new["points"] = [torch.tensor(np_pc, dtype=torch.float32)]
-        else:
-            pcd_new["points"] = [pcd_new["points"]]
 
         return pcd_new
 
@@ -414,12 +357,13 @@ class BevDatasetMulti(torch.utils.data.Dataset):
             grid_map_resolution = torch.tensor(h5py_grid_map["resolution"][0])
             np_data = np.array(h5py_grid_map[f"data"][gm_idx])  # [gm_idx]{gm_idx}
             H_sensor_gravity__map = torch.from_numpy(
-                np.array(h5py_grid_map[f"T_sensor_gravity__map"][gm_idx])
+                np.array(h5py_grid_map[f"T_sensor_gravity_yaw__map"][gm_idx])
             )
 
             grid_map_data = torch.from_numpy(
                 np.ascontiguousarray(np.ascontiguousarray(np_data))
             ).float()
+            grid_map_data = center_crop(grid_map_data, self.target_shape[key][1:]).squeeze(0)
 
             if len(target_idxs) != 0:
                 target[target_out_idxs] = grid_map_data[target_idxs]

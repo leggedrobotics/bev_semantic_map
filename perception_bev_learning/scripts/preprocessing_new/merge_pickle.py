@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 import os
 
-cfg_dir = "/data_large/manthan/camp_roberts_f/config"
+cfg_dir = "/home/patelm/Data/nature_hiking/train_dataset/cfg_orig"
 
 
 # List of pickle files in provided dir

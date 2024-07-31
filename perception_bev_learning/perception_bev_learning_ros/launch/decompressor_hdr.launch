@@ -1,0 +1,31 @@
+<launch>s
+<arg name="robot_namespace" default="crl_rzr"/>
+
+<param name="use_sim_time" value="true"/>
+
+    <node pkg="image_transport"
+          type="republish"
+          name="hdr_front_decompressor"
+          args="compressed in:=v4l2_camera/image_raw
+                raw out:=v4l2_camera/image_raw"/>
+
+      <!-- <node pkg="image_transport"
+          type="republish"
+          name="multisense_back_decompressor"
+          args="compressed in:=multisense_back/aux/semantic_image_rect_color
+                raw out:=multisense_back/aux/semantic_image_rect_color"/>
+
+      <node pkg="image_transport"
+          type="republish"
+          name="multisense_left_decompressor"
+          args="compressed in:=multisense_left/aux/semantic_image_rect_color
+                raw out:=multisense_left/aux/semantic_image_rect_color"/>
+      
+      <node pkg="image_transport"
+          type="republish"
+          name="multisense_right_decompressor"
+          args="compressed in:=multisense_right/aux/semantic_image_rect_color
+                raw out:=multisense_right/aux/semantic_image_rect_color"/> -->
+
+
+</launch>

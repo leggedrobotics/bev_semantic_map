@@ -361,7 +361,7 @@ class GTVisualization:
         self.gridmap_short_key = "g_traversability_map_short_gt"
         self.anchor_key = "hdr_front"
         self.elevation_layers = ["elevation"]
-        self.pointcloud_key = "current_temporal_merged_points"
+        self.pointcloud_key = "velodyne_merged_points"
 
         self.vis = SimpleNumpyToRviz(
             init_node=True,
@@ -927,19 +927,17 @@ class GTVisualization:
         #     H_map_sgyaw
         # ) = self.get_gridmap_data_sensor_gravity(datum, self.gridmap_short_key, crop_dim=(276, 276))
         
-        # (
-        #     gridmap_short_data,
-        #     H_sgyaw_map,
-        #     pose_grid,
-        #     yaw_grid,
-        #     grid_res_short,
-        #     grid_layers_short,
-        #     ts_gridmap_short, _,_,_
-        # ) = self.get_gridmap_data(datum, self.gridmap_short_key, crop_dim=(276, 276))
+        (
+            gridmap_short_data,
+            H_sgyaw_map,
+            pose_grid,
+            yaw_grid,
+            grid_res_short,
+            grid_layers_short,
+            ts_gridmap_short, _,_,_
+        ) = self.get_gridmap_data(datum, self.gridmap_short_key, crop_dim=(276, 276))
 
-        gridmap_short_data, grid_res_short, grid_layers_short, H_sgyaw_map = self.get_gridmap_short_data(self.gridmap_short_key, datum)
-
-        pcd_data, ts_pcd = self.get_pointcloud_data(datum, H_sgyaw_map)
+        # pcd_data, ts_pcd = self.get_pointcloud_data(datum, H_sgyaw_map)
         
         # image_data = self.project_pointcloud_onto_images(datum, pcd_data, H_sgyaw_map)
         
@@ -976,7 +974,7 @@ class GTVisualization:
         for key in self.image_keys:
             self.vis.image(image_data[key], image_key=key, reference_frame=key)
 
-        self.vis.pointcloud(pcd_data, reference_frame="sensor_gravity_yaw")
+        # self.vis.pointcloud(pcd_data, reference_frame="sensor_gravity_yaw")
         # self.vis.gvomcloud(points_sg, reference_frame="sensor_gravity_yaw")
 
 
@@ -1001,7 +999,7 @@ class GTVisualization:
         print("")
         rospy.sleep(0.1)
         # print(f"gridmap trav ts diff {ts_imgs[0] - ts_gridmap}")
-        print(f"pointcloud ts diff {ts_imgs[0] - ts_pcd}")
+        # print(f"pointcloud ts diff {ts_imgs[0] - ts_pcd}")
 
         return idx
 
@@ -1012,16 +1010,16 @@ def signal_handler(sig, frame):
 
 
 # Callback functions for keyboard events
-current_index = 0 # 167 # 1680
+current_index = 280 # 167 # 1680
 
 
 def on_press(key):
     global current_index
     if key == keyboard.Key.right:
-        current_index = (current_index + 5) % visualizer.len()
+        current_index = (current_index + 1) % visualizer.len()
         print("Item: ", visualizer.get_item(current_index))
     elif key == keyboard.Key.left:
-        current_index = (current_index - 4) % visualizer.len()
+        current_index = (current_index - 1) % visualizer.len()
         print("Item: ", visualizer.get_item(current_index))
 
 

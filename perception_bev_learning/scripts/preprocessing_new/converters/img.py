@@ -13,6 +13,8 @@ class CompressedImgConverter(Converter):
         aux_target_frame: Optional[List[str]] = None,
         aux_tfs: Optional[List[Tuple[str, str]]] = None,
         resize: Optional[Union[int, Tuple[int, int]]] = None,
+        info_obs_name: Optional[str] = None,
+        undistort: Optional[bool] = False,
     ):
         super().__init__()
         self.bridge = CvBridge()
@@ -24,16 +26,80 @@ class CompressedImgConverter(Converter):
         self.ref_frame = reference_frame
         self.aux_target_frame = aux_target_frame
         self.aux_tfs = aux_tfs
+        self.info_obs_name = info_obs_name
+        self.undistort = undistort
+        self.D = None
+        self.K = None
+        self.distortion_model = None
 
     def msg_type(self) -> Any:
         return CompressedImage
 
     def write_to_h5(
-        self, msg: Any, dataset_writer, seq_name: str, dataset_key: str, tf_listener
+        self, msg: Any, dataset_writer, seq_name: str, dataset_key: str, tf_listener, info_dict, *args, **kwargs
     ) -> bool:
         img = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
+
+        if self.undistort:
+            if self.info_obs_name is not None:
+                if self.D is None:
+                    # Extract the Distortion Matrix 
+                    msg_cam_info = info_dict[self.info_obs_name]
+                    camera_info = {
+                        method_name: getattr(msg_cam_info, method_name)
+                        for method_name in dir(type(msg_cam_info))
+                        if not callable(getattr(type(msg_cam_info), method_name))
+                        and method_name[0] != "_"
+                        and method_name.find("roi") == -1
+                        and method_name.find("header") == -1
+                    }
+                    for k, v in camera_info.items():
+                        if type(v) is tuple:
+                            camera_info[k] = np.array(list(v))
+
+                    # print(camera_info["D"])
+                    # print(camera_info["distortion_model"])
+                    self.D = camera_info["D"]
+                    self.K = camera_info["K"].reshape((3,3))
+                    # print(img.shape)
+                    self.h = img.shape[0]
+                    self.w = img.shape[1]
+                    # Need to update to original K
+                    print(f"Original K is {self.K}")
+                    # self.K[0,0] = 512.11257225
+                    # self.K[1,1] = 502.77627934
+                    # self.K[0,2] = 968.75886685
+                    # self.K[1,2] = 644.72345463
+
+                    # self.D = np.array([0.13058332, 0.01104646, 0.01195079, -0.00302817])
+
+                    self.distortion_model = camera_info["distortion_model"]
+                    self.K_new, roi = cv2.getOptimalNewCameraMatrix(self.K, self.D, (self.w, self.h), 1, (self.w, self.h))
+                    # print(f"Height is {self.h}, width is {self.w} ")
+                    # self.K_new = self.K.copy()  # Optionally, you can define a new camera matrix
+
+                # Perform the undistortion
+                print(f"K mat is {self.K}")
+                print(f"D mat is {self.D}")
+                # img = cv2.undistort(img, self.K, self.D, None, self.K_new)
+
+                # mapx, mapy = cv2.initUndistortRectifyMap(self.K, self.D, None, self.K_new, (self.w, self.h), 5)
+                # img = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                map1, map2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, np.eye(3), self.K_new, (self.w, self.h), cv2.CV_16SC2)
+                img = cv2.remap(img, map1, map2, interpolation=cv2.INTER_LINEAR)
+
+            else:
+                print(f"Warning: Cam info matrix does not exist")
+                return False
+
         if self.resize is not None:
+            # undistorted_img = cv2.resize(undistorted_img, (self.resize[0], self.resize[1]))
             img = cv2.resize(img, (self.resize[0], self.resize[1]))
+        
+        # cv2.imshow("Undistorted Image", undistorted_img)
+        # cv2.imshow("Original Image", img)
+        # cv2.waitKey(5000)
+        # cv2.destroyAllWindows()
 
         res_dict = {"image": img}
 

@@ -1,7 +1,7 @@
 from perception_bev_learning.visu import LearningVisualizer
 from perception_bev_learning.utils import denormalize_img as d_img
 from perception_bev_learning.loss import LossManagerMulti
-from perception_bev_learning.utils import BevMeterMulti, Timer
+from perception_bev_learning.utils import BevMeterMultiAnymal, Timer
 from perception_bev_learning.ops import voxelize_pcd_scans
 
 import torch
@@ -65,7 +65,7 @@ class LightningBEVMulti(LightningModule):
         # Setup the list of ranges (Micro, Short)
         self.range_keys = [x for x in self.hparams.metrics.target_layers.keys()]
 
-        self._meter = BevMeterMulti(self.hparams.metrics, self)  # TODO: verify
+        self._meter = BevMeterMultiAnymal(self.hparams.metrics, self)  # TODO: verify
 
         self._loss_manager = LossManagerMulti(
             self.hparams.target_layers
@@ -107,9 +107,9 @@ class LightningBEVMulti(LightningModule):
 
         # TODO: Remove these hardcoded values and instead pass them as parameters
         # TODO: Check if they are used anywhere
-        self.travmap_gt_key = "g_traversability_map_micro_gt"
-        self.travmap_key = "g_traversability_map_micro"
-        self.elemap_key = "g_raw_ele_map_micro"
+        # self.travmap_gt_key = "g_traversability_map_micro_gt"
+        # self.travmap_key = "g_traversability_map_micro"
+        # self.elemap_key = "g_raw_ele_map_micro"
 
         # Setting up the dictionary for layer name to Idx
         self.target_idxs_dict = self._meter.target_idxs_dict
@@ -419,6 +419,16 @@ class LightningBEVMulti(LightningModule):
         self._mode = "val"
         self._visu_count[self._mode] = 0
 
+        # miou = self.pred_target__miou["shorttraversability_val"].compute()
+        # for i, c in enumerate(miou):
+        #     self.log(
+        #         f"val/miou/shorttraversability_{i}",
+        #         c,
+        #         prog_bar=True,
+        #         batch_size=self.hparams.batch_size,
+        #     )
+        # self.pred_target__miou["shorttraversability_val"].reset()
+
     @accumulate_time
     def test_step(self, batch: any, batch_idx: int) -> torch.Tensor:
         item_idx = batch["index"][:, 0]
@@ -663,12 +673,12 @@ class LightningBEVMulti(LightningModule):
             gridmap_shape["micro"] = (512, 512, 1)
             gridmap_resolution["micro"] = (0.2, 0.2, 50)
             gridmap_shape["short"] = (256, 256, 1)
-            gridmap_resolution["short"] = (0.8, 0.8, 50)
+            gridmap_resolution["short"] = (0.15, 0.15, 10)
 
             for gridmap_key in self.range_keys:
                 # if gridmap_key == "micro":
                 #     continue
-                risk_key = "wheel_risk" if gridmap_key == "micro" else "cost"
+                risk_key = "traversability"
                 target = batch["target"][gridmap_key][:, seq_i, ...]
                 aux = batch["aux"][gridmap_key][:, seq_i, ...]
                 gmr = batch["gm_res"][gridmap_key][:, seq_i, ...]
@@ -701,32 +711,24 @@ class LightningBEVMulti(LightningModule):
                     gridmap_key
                 ].layers
 
-                current_elevation_raw = self.get_scaled_layer(
-                    "elevation_raw",
-                    aux_layers_cfg,
-                    aux,
-                    gridmap_key=gridmap_key,
-                    aux=True,
-                )
-                current_elevation_raw_inpainted = self.get_scaled_layer(
-                    "elevation",
-                    aux_layers_cfg,
-                    aux,
-                    gridmap_key=gridmap_key,
-                    aux=True,
-                )
                 target_elevation = self.get_scaled_layer(
                     "elevation", target_layers_cfg, target, gridmap_key
                 )
 
+                invalid_mask = torch.isnan(target_elevation)
+
                 # TODO: Harcoded for the elevation output channel to be at idx 1
                 pred_elevation = curr_pred[:, 1] / target_layers_cfg["elevation"].scale
+                pred_elevation_masked = pred_elevation.clone()
+                pred_elevation_masked[invalid_mask] = torch.nan
 
-                # pred_elevation_std = (
-                #     pred_std["elevation"]
-                #     / self.hparams.metrics.target_layers["elevation"].scale
-                # )
-                # pred_wheel_risk_std = pred_std["wheel_risk"]
+                pred_traversability = curr_pred[:, 0]
+                pred_traversability = torch.where(pred_traversability > 0.5, 1.0, 0.0)
+                pred_traversability_masked = pred_traversability.clone()
+                pred_traversability_masked[invalid_mask] = torch.nan
+
+                target_traversability = self.get_scaled_layer("traversability", target_layers_cfg, target, gridmap_key)
+
 
                 for b in range(BS):
                     if (
@@ -761,184 +763,36 @@ class LightningBEVMulti(LightningModule):
                         if imgs is not None:
                             dashboard_log = {}
 
-                            confidence_idx = self.aux_idxs_dict[gridmap_key][
-                                "confidence_gt"
-                            ]
-                            reliable_idx = self.aux_idxs_dict[gridmap_key]["reliable"]
-                            m_confidence_gt = aux[b, confidence_idx] > 0.1
-                            m_reliable = aux[b, reliable_idx] > 0.5
-                            m_unobserved = m_confidence_gt * ~m_reliable
-
-                            invalid_m = ~m_confidence_gt
-
-                            inpainted_risk = aux[
-                                b, self.aux_idxs_dict[gridmap_key][risk_key]
-                            ]
-                            inpainted_risk[invalid_m] = torch.nan
-
-                            inpainted_elevation = current_elevation_raw_inpainted[b]
-                            inpainted_elevation[invalid_m] = torch.nan
-
-                            if self.hparams.visualizer.plot_all_risks:
-                                fatal_risk = self.hparams.metrics.fatal_risk
-                                current_aux = self.aux_idxs_dict[gridmap_key][risk_key]
-                                current_aux_non_inpainted = self.aux_idxs_dict[
-                                    gridmap_key
-                                ][
-                                    risk_key
-                                ]  # Switch to Non Inpainted
-
-                                b_pred = (curr_pred[b, 0] > fatal_risk).type(
-                                    torch.float32
-                                )
-                                b_aux_inp = (aux[b, current_aux] > fatal_risk).type(
-                                    torch.float32
-                                )
-                                b_aux_non_inp = (
-                                    aux[b, current_aux_non_inpainted] > fatal_risk
-                                ).type(torch.float32)
-                                b_target = (target[b, 0] > fatal_risk).type(
-                                    torch.float32
-                                )
-
-                                b_aux_inp[invalid_m] = torch.nan
-                                b_aux_non_inp[invalid_m] = torch.nan
-                                b_target[invalid_m] = torch.nan
-                                error_wheel_risk = torch.abs(
-                                    target[b, 0] - curr_pred[b, 0]
-                                )
-                                maps = torch.stack(
-                                    [
-                                        curr_pred[b, 0],
-                                        inpainted_risk,
-                                        # pred_wheel_risk_std[b][0],
-                                        error_wheel_risk,
-                                        aux[b, current_aux_non_inpainted],
-                                        target[b, 0],
-                                        b_pred,
-                                        # b_aux_inp,
-                                        b_aux_non_inp,
-                                        b_target,
-                                        aux[b, confidence_idx],
-                                    ],
-                                    dim=0,
-                                )
-
-                                self._visu.plot_n_maps(
-                                    maps=maps[:, 6:-6, 6:-6],
-                                    titles=[
-                                        "RoadRunner-M&M",
-                                        "RACER-X-Inpainted",
-                                        # "RoadRunner-M&M Std",
-                                        "Risk - Error GT - RR",
-                                        "RACER-X",
-                                        "Ground Truth",
-                                        "RoadRunner-M&M-B",
-                                        # "RACER-X-Inpainted-B",
-                                        "RACER-X-B",
-                                        "Ground Truth-B",
-                                        "Confidence-GT",
-                                    ],
-                                    color_maps=[CMAP_TRAVERSABILITY] * 2
-                                    + [CMAP_ELEVATION] * 1
-                                    + [CMAP_TRAVERSABILITY] * 5
-                                    + [CMAP_ELEVATION] * 1,
-                                    v_mins=[0.0] * 10,
-                                    v_maxs=[1.0] * 10,
-                                    tag=f"{self._mode}_traversability_layers_{img_idx_str}",
-                                    store_svg=True,
-                                )
-                                del (
-                                    maps,
-                                    b_pred,
-                                    b_aux_inp,
-                                    b_aux_non_inp,
-                                    b_target,
-                                    current_aux_non_inpainted,
-                                    current_aux,
-                                )
-
-                            if self.hparams.visualizer.plot_all_elevations:
-                                error_elevation = torch.abs(
-                                    target_elevation[b] - pred_elevation[b]
-                                )
-                                maps = torch.stack(
-                                    [
-                                        pred_elevation[b],
-                                        # pred_elevation_std[b][0],
-                                        error_elevation,
-                                        current_elevation_raw[b],
-                                        inpainted_elevation,
-                                        target_elevation[b],
-                                        aux[b, confidence_idx],
-                                    ],
-                                    dim=0,
-                                )
-
-                                self._visu.plot_n_maps(
-                                    maps=maps[:, 6:-6, 6:-6],
-                                    titles=[
-                                        "RoadRunner-M&M",
-                                        # "RoadRunner-M&M-std",
-                                        "Error Map",
-                                        "RACER-X-Raw",
-                                        "RACER-X-Inpainted",
-                                        "Ground Truth",
-                                        "Confidence-GT",
-                                    ],
-                                    # color_maps=[CMAP_ELEVATION] * 1 + [CMAP_ERROR] * 2 + [CMAP_ELEVATION] * 4,
-                                    color_maps=[CMAP_ELEVATION] * 6,
-                                    v_mins=[-20] * 1 + [0] * 1 + [-20] * 3 + [0],
-                                    v_maxs=[20] * 1 + [4] * 1 + [20] * 3 + [1],
-                                    tag=f"{self._mode}_elevation_layers_{img_idx_str}",
-                                    store_svg=True,
-                                )
-                                del maps
-
                             if self.hparams.visualizer.plot_all_maps:
-                                error_wheel_risk = torch.abs(
-                                    target[b, 0] - curr_pred[b, 0]
-                                )
-                                error_elevation = torch.abs(
-                                    target_elevation[b] - pred_elevation[b]
-                                )
 
                                 maps = torch.stack(
                                     [
-                                        curr_pred[b, 0],
-                                        inpainted_risk,
-                                        target[b, 0],
-                                        error_wheel_risk,
-                                        aux[b, confidence_idx],
-                                        pred_elevation[b],
-                                        inpainted_elevation,
-                                        target_elevation[b],
-                                        error_elevation,
-                                        pcd_data[b, 0, 0],
                                         gvom_data[b, 0, 0],
+                                        pred_traversability[b],
+                                        pred_traversability_masked[b],
+                                        target_traversability[b],
+                                        pred_elevation[b],
+                                        pred_elevation_masked[b],
+                                        target_elevation[b],
                                     ],
                                     dim=0,
                                 )
                                 img = self._visu.plot_n_maps(
                                     maps=maps[:, 6:-6, 6:-6],
                                     titles=[
-                                        "Risk - RoadRunner-M&M",
-                                        "Risk - RACER-X",
-                                        "Risk - Ground Truth",
-                                        "Risk - Error GT - RR",
-                                        "Confidence - Ground Truth",
-                                        "Elev - RoadRunner-M&M",
-                                        "Elev - RACER-X",
-                                        "Elev - Ground Truth",
-                                        "Elev - Error GT - RR",
-                                        "Pointcloud",
                                         "GVOMcloud",
+                                        "Pred Traversability",
+                                        "Pred Traversability Masked",
+                                        "Target Traversability",
+                                        "Pred Elevation",
+                                        "Pred Elevation Masked",
+                                        "Target Elevation",
                                     ],
-                                    color_maps=[CMAP_TRAVERSABILITY] * 3
-                                    + [CMAP_ELEVATION] * 6
-                                    + [CMAP_LIDAR] * 2,
-                                    v_mins=[0.0] * 5 + [-20] * 3 + [0] * 1 + [0.0] * 2,
-                                    v_maxs=[1.0] * 5 + [20] * 3 + [3] * 1 + [1.0] * 2,
+                                    color_maps=[CMAP_LIDAR] * 1
+                                    + [CMAP_TRAVERSABILITY] * 3
+                                    + [CMAP_ELEVATION] * 3,
+                                    v_mins=[0.0] * 4 + [-5] * 3,
+                                    v_maxs=[1.0] * 4 + [5] * 3,
                                     tag=f"{self._mode}_all_BEV_{img_idx_str}",
                                     not_log=self.hparams.visualizer.plot_dashboard,
                                     store=not self.hparams.visualizer.plot_dashboard,
@@ -946,68 +800,6 @@ class LightningBEVMulti(LightningModule):
                                 )
                                 dashboard_log["plot_all_maps"] = img
                                 del maps
-
-                            v_min = 0.0
-                            v_max = 1.0
-                            if self.hparams.visualizer.project_pcd_on_image:
-                                self._visu.project_pcd_on_image(
-                                    imgs=img_plots[b].clone(),
-                                    rots=rots[b],
-                                    trans=trans[b],
-                                    intrins=intrins[b],
-                                    pcd_data=pcd_data[b, -1, 0],
-                                    grid_map_resolution=gmr[b],
-                                    cam=0,
-                                    tag=f"{self._mode}_project_pointcloud_on_image0_{img_idx_str}",
-                                )
-
-                            torch.cuda.empty_cache()
-                            if (
-                                self.hparams.visualizer.project_gt_BEV_on_image
-                                and gridmap_key == "micro"
-                            ):
-                                img = self._visu.project_BEV_on_image(
-                                    imgs=img_plots[b].clone(),
-                                    rots=rots[b],
-                                    trans=trans[b],
-                                    post_rots=post_rots[b],
-                                    post_trans=post_trans[b],
-                                    intrins=intrins[b],
-                                    target=target[b, 0][None],
-                                    elevation=target_elevation[b],
-                                    grid_map_resolution=gmr[b],
-                                    v_min=v_min,
-                                    v_max=v_max,
-                                    cam=list(self.hparams.visualizer.project_cams),
-                                    not_log=self.hparams.visualizer.plot_dashboard,
-                                    store=True,
-                                    tag=f"{self._mode}_project_gt_BEV_on_image0_{img_idx_str}",
-                                )
-
-                                dashboard_log["project_gt_BEV_on_image"] = img
-
-                            if (
-                                self.hparams.visualizer.project_pred_BEV_on_image
-                                and gridmap_key == "micro"
-                            ):
-                                img = self._visu.project_BEV_on_image(
-                                    imgs=img_plots[b].clone(),
-                                    rots=rots[b],
-                                    trans=trans[b],
-                                    post_rots=post_rots[b],
-                                    post_trans=post_trans[b],
-                                    intrins=intrins[b],
-                                    target=curr_pred[b, 0][None],
-                                    elevation=pred_elevation[b],
-                                    grid_map_resolution=gmr[b],
-                                    v_min=v_min,
-                                    v_max=v_max,
-                                    cam=list(self.hparams.visualizer.project_cams),
-                                    not_log=self.hparams.visualizer.plot_dashboard,
-                                    store=True,
-                                    tag=f"{self._mode}_project_pred_BEV_on_image0_{img_idx_str}",
-                                )
-                                dashboard_log["project_pred_BEV_on_image"] = img
 
                             if self.hparams.visualizer.plot_raw_images:
                                 all_imgs = self._visu.plot_list(
@@ -1026,12 +818,6 @@ class LightningBEVMulti(LightningModule):
                                     dashboard_log=dashboard_log,
                                     mode=self._mode,
                                     tag=f"{self._mode}_dashboard_{img_idx_str}",
-                                )
-
-                            if self.hparams.visualizer.plot_pcd_bev:
-                                self._visu.plot_pcd_bev(
-                                    maps=pcd_data.clone().detach()[b, :, 0],
-                                    tag=f"{self._mode}_pcd_bev{img_idx_str}",
                                 )
 
                         self._visu_count[self._mode] += 1  # TODO: Fix the counter
